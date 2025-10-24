@@ -1,0 +1,90 @@
+name: 'Setup MicroK8s Kubernetes'
+description: 'Install MicroK8s Kubernetes distribution'
+runs:
+  using: 'composite'
+  steps:
+    - name: Free up disk space
+      shell: bash
+      run: |
+        echo "🧹 Removing unnecessary directories to free up disk space..."
+        sudo rm -rf /usr/local/.ghcup
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /usr/local/share/boost
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        sudo rm -rf /usr/lib/jvm
+        sudo rm -rf /usr/share/swift
+        sudo rm -rf /usr/local/share/powershell
+        sudo rm -rf /usr/local/julia*
+        sudo rm -rf /opt/az
+        sudo rm -rf /usr/local/share/chromium
+        sudo rm -rf /opt/microsoft
+        sudo rm -rf /opt/google
+        sudo rm -rf /usr/lib/firefox
+        echo "✅ Disk space freed up"
+        df -h / | grep -v Filesystem
+
+    - name: Install MicroK8s
+      shell: bash
+      run: |
+        echo "📦 Installing MicroK8s (latest from stable channel)..."
+        sudo snap install microk8s --classic --channel=latest/stable
+        sudo usermod -a -G microk8s "${USER}"
+        
+        # Show installed version
+        MICROK8S_VERSION=$(sudo microk8s version | head -1)
+        echo "ℹ️  Installed MicroK8s: ${MICROK8S_VERSION}"
+        
+        mkdir -p ~/.kube
+        sudo microk8s kubectl config view --raw > ~/.kube/config
+        sudo chown "${USER}":"${USER}" ~/.kube/config
+        
+        echo "⏳ Waiting for MicroK8s to be ready..."
+        sudo microk8s status --wait-ready --timeout 300
+    
+    - name: Setup kubectl
+      shell: bash
+      run: |
+        echo "🔧 Setting up kubectl..."
+        
+        # Install kubectl
+        ARCH=$(uname -m)
+        case "${ARCH}" in
+          x86_64) ARCH="amd64" ;;
+          aarch64) ARCH="arm64" ;;
+        esac
+        
+        kubectl_version=$(sudo microk8s version | grep -oe 'v[0-9]\+\(\.[0-9]\+\)*')
+        sudo curl -fL --progress-bar -o /usr/bin/kubectl https://dl.k8s.io/release/"${kubectl_version}"/bin/linux/"${ARCH}"/kubectl
+        sudo chmod +x /usr/bin/kubectl
+        sudo rm -rf /usr/local/bin/kubectl
+        
+        echo "✅ kubectl installed: $(kubectl version --client)"
+    
+    - name: Verify cluster
+      shell: bash
+      run: |
+        echo "🔍 Verifying MicroK8s cluster..."
+        kubectl get nodes
+        kubectl get pods -A
+        
+        # Wait for system pods to be ready (excluding completed/job pods)
+        echo "⏳ Waiting for system pods..."
+        # Wait only for Running pods (not Completed/Job pods)
+        kubectl wait --for=condition=Ready pods --all -n kube-system --timeout=5m \
+          --field-selector=status.phase!=Succeeded,status.phase!=Failed || true
+        
+        # Verify all pods are either Running or Completed
+        NOT_READY=$(kubectl get pods -n kube-system -o json | \
+          jq -r '.items[] | select(.status.phase != "Running" and .status.phase != "Succeeded") | .metadata.name')
+        
+        if [ -n "$NOT_READY" ]; then
+          echo "❌ Some pods are not ready:"
+          echo "$NOT_READY"
+          kubectl get pods -A
+          exit 1
+        fi
+        
+        echo "✅ MicroK8s cluster is ready!"
