@@ -1,0 +1,85 @@
+name: Validate Documentation
+
+on:
+  pull_request:
+    types:
+      - edited
+      - opened
+      - reopened
+      - synchronize
+  schedule:
+    # Run weekly on Monday at 9:00 UTC to catch upstream changes
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  validate-kata-deploy-docs:
+    name: Validate kata-deploy Configuration Documentation
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install Python dependencies
+        run: |
+          pip install pyyaml requests
+      
+      - name: Update Helm dependencies
+        run: |
+          cd ${{ github.workspace }}
+          helm dependency update
+          rm -f charts/kata-deploy-0.0.0-dev.tgz
+      
+      - name: Extract kata-deploy chart
+        run: |
+          cd ${{ github.workspace }}
+          mkdir -p /tmp/kata-deploy-extracted
+          tar -xzf charts/kata-deploy-*.tgz -C /tmp/kata-deploy-extracted
+      
+      - name: Validate documentation coverage
+        id: validate
+        run: |
+          python .github/scripts/validate-kata-deploy-options.py \
+            --kata-deploy-chart /tmp/kata-deploy-extracted/kata-deploy \
+            --our-values values.yaml \
+            --our-docs README.md QUICKSTART.md \
+            --output-format github
+      
+      - name: Comment on PR (if applicable)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = '/tmp/validation-report.md';
+            
+            if (fs.existsSync(reportPath)) {
+              const report = fs.readFileSync(reportPath, 'utf8');
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: report
+              });
+            }
+      
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-validation-report
+          path: /tmp/validation-report.md
+          if-no-files-found: ignore
+
