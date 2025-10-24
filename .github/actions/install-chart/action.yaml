@@ -1,0 +1,81 @@
+name: Install Helm Chart
+description: Install the Confidential Containers Helm chart with various configurations
+
+inputs:
+  release-name:
+    description: 'Helm release name'
+    required: false
+    default: 'coco'
+  namespace:
+    description: 'Kubernetes namespace'
+    required: false
+    default: 'kube-system'
+  extra-args:
+    description: 'Extra Helm install arguments (e.g., --set flags)'
+    required: false
+    default: ''
+  values-file:
+    description: 'Path to values file (optional)'
+    required: false
+    default: ''
+  wait-timeout:
+    description: 'Timeout for helm install --wait'
+    required: false
+    default: '15m'
+
+outputs:
+  installed:
+    description: 'Whether installation succeeded'
+    value: ${{ steps.install.outputs.result }}
+
+runs:
+  using: composite
+  steps:
+    - name: Update Helm dependencies
+      shell: bash
+      run: |
+        echo "📦 Updating Helm dependencies..."
+        helm dependency update
+        echo "✅ Dependencies updated"
+
+    - name: Validate chart
+      shell: bash
+      run: |
+        echo "🔍 Validating chart..."
+        helm lint .
+        echo "✅ Chart is valid"
+
+    - name: Install chart
+      id: install
+      shell: bash
+      run: |
+        echo "🚀 Installing chart: ${{ inputs.release-name }}"
+        echo "   Namespace: ${{ inputs.namespace }}"
+        echo "   Extra args: ${{ inputs.extra-args }}"
+        if [ -n "${{ inputs.values-file }}" ]; then
+          echo "   Values file: ${{ inputs.values-file }}"
+        fi
+        
+        INSTALL_CMD="helm install ${{ inputs.release-name }} . \
+          --namespace ${{ inputs.namespace }} \
+          --create-namespace \
+          --debug"
+        
+        if [ -n "${{ inputs.values-file }}" ]; then
+          INSTALL_CMD="$INSTALL_CMD -f ${{ inputs.values-file }}"
+        fi
+        
+        if [ -n "${{ inputs.extra-args }}" ]; then
+          INSTALL_CMD="$INSTALL_CMD ${{ inputs.extra-args }}"
+        fi
+        
+        echo "Running: $INSTALL_CMD"
+        
+        if eval $INSTALL_CMD; then
+          echo "✅ Chart installed successfully"
+          echo "result=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Chart installation failed"
+          echo "result=failed" >> $GITHUB_OUTPUT
+          exit 1
+        fi
