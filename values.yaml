@@ -1,0 +1,67 @@
+# Default values for Confidential Containers
+# This file provides x86_64 architecture defaults.
+# For other architectures, use:
+#   - values/kata-s390x.yaml for IBM Z
+#   - values/kata-aarch64.yaml for ARM64
+#   - values/kata-remote.yaml for peer-pods
+
+# Architecture label (for NOTES template)
+architecture: "x86_64"
+
+# Common configuration defaults (shared across all architectures)
+_commonConfig: &commonConfig
+  imagePullPolicy: Always
+  k8sDistribution: k8s
+
+# Shared shim configuration (x86_64)
+# This anchor is reused by both CoCo runtime and CI variant
+_shimsConfig: &x86_64_shims
+  shims: "qemu-coco-dev qemu-snp qemu-tdx qemu-nvidia-gpu-snp qemu-nvidia-gpu-tdx"
+  snapshotterHandlerMapping: "qemu-coco-dev:nydus,qemu-snp:nydus,qemu-tdx:nydus,qemu-nvidia-gpu-snp:nydus,qemu-nvidia-gpu-tdx:nydus"
+  pullTypeMapping: "guest-pull"
+
+# Runtime configuration (kata-deploy)
+# Most values are inherited from the kata-deploy subchart defaults.
+# We only override what's specific to Confidential Containers.
+#
+# Common customizations (use --set flags to override defaults):
+#   imagePullPolicy: IfNotPresent | Always (default) | Never
+#   imagePullSecrets: [{"name": "my-secret"}]
+#   k8sDistribution: k8s (default) | k3s | rke2 | k0s | microk8s
+#   nodeSelector: {"key": "value"}
+#   env.debug: "true" | "false" (default)
+#
+# Advanced customizations (kata-deploy specific options):
+#   image.tag: Override image tag (uses chart's appVersion by default)
+#   env.defaultShim: "" (default) | "qemu-snp" | "qemu-tdx" | etc.
+#                    The default shim to use if `kata` is specified as the pod runtimeClass
+#   env.createRuntimeClasses: "true" (default) | "false"
+#                             Create Kubernetes RuntimeClass resources
+#   env.createDefaultRuntimeClass: "false" (default) | "true"
+#                                  Create the default k8s RuntimeClass
+#   env.installationPrefix: "" (default, uses "/opt/kata") | "/opt/custom-path"
+#                           Custom installation path prefix
+#   env.multiInstallSuffix: "" (default) | "/opt/kata-PR12232"
+#                           Enable multiple installations with suffix
+#   env.allowedHypervisorAnnotations: Enable specific annotations when launching containers
+#   env.agentNoProxy: Set NO_PROXY for the Kata agent
+#   env.agentHttpsProxy: Set HTTPS_PROXY for the Kata agent
+#
+# Example:
+#   helm install coco oci://... -f values/kata-s390x.yaml \
+#     --set kata-as-coco-runtime.imagePullPolicy=IfNotPresent \
+#     --set kata-as-coco-runtime.k8sDistribution=k3s \
+#     --set kata-as-coco-runtime.env.defaultShim=qemu-tdx
+#
+kata-as-coco-runtime:
+  enabled: true
+  <<: *commonConfig
+  
+  env:
+    debug: "false"
+    # Deploy TEE-enabled runtime shims for x86_64
+    # For other architectures, use the appropriate values file:
+    #   - values/kata-s390x.yaml for IBM Z
+    #   - values/kata-aarch64.yaml for ARM64
+    #   - values/kata-remote.yaml for peer-pods
+    <<: *x86_64_shims

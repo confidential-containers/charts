@@ -1,0 +1,22 @@
+# Kata runtime configuration for peer-pods (architecture independent)
+# Usage: helm install coco oci://ghcr.io/.../confidential-containers -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-remote.yaml
+#
+# This file only overrides the remote shim configuration for peer-pods.
+# For the full list of configurable options and their descriptions,
+# see: values.yaml in the chart root
+#
+_commonConfig: &commonConfig
+  imagePullPolicy: Always
+  k8sDistribution: k8s
+
+_shimsConfig: &remote_shims
+  shims: "remote"
+  snapshotterHandlerMapping: "remote:nydus"
+  pullTypeMapping: "guest-pull"
+
+kata-as-coco-runtime:
+  <<: *commonConfig
+  
+  env:
+    debug: "false"
+    <<: *remote_shims

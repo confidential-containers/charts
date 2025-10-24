@@ -1,0 +1,24 @@
+# Kata runtime configuration for s390x (IBM Z) architecture
+# Usage: helm install coco oci://ghcr.io/.../confidential-containers -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-s390x.yaml
+#
+# This file only overrides architecture-specific shims and mappings.
+# For the full list of configurable options and their descriptions,
+# see: values.yaml in the chart root
+#
+architecture: s390x
+
+_commonConfig: &commonConfig
+  imagePullPolicy: Always
+  k8sDistribution: k8s
+
+_shimsConfig: &s390x_shims
+  shims: "qemu-coco-dev qemu-se"
+  snapshotterHandlerMapping: "qemu-coco-dev:nydus,qemu-se:nydus"
+  pullTypeMapping: "guest-pull"
+
+kata-as-coco-runtime:
+  <<: *commonConfig
+  
+  env:
+    debug: "false"
+    <<: *s390x_shims

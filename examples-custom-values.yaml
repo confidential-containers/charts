@@ -1,0 +1,62 @@
+# Example: Custom values file for Confidential Containers Helm Chart
+#
+# This file demonstrates how to create a custom configuration
+# for your specific needs while using architecture-specific settings.
+
+# Example 1: s390x with custom node selector
+architecture: s390x
+
+kata-as-coco-runtime:
+  env:
+    debug: "true"
+    shims: "qemu-coco-dev qemu-se"
+    snapshotterHandlerMapping: "qemu-coco-dev:nydus,qemu-se:nydus"
+  
+  # Only deploy on worker nodes with specific label
+  nodeSelector:
+    node-role.kubernetes.io/worker: ""
+    confidential-computing: "enabled"
+
+---
+# Example 2: x86_64 with only SEV-SNP and TDX (no GPU support)
+architecture: x86_64
+
+kata-as-coco-runtime:
+  env:
+    debug: "false"
+    shims: "qemu-snp qemu-tdx qemu-coco-dev"
+    snapshotterHandlerMapping: "qemu-snp:nydus,qemu-tdx:nydus,qemu-coco-dev:nydus"
+    
+    # Use proxy for guest agent
+    agentHttpsProxy: "http://proxy.example.com:8080"
+    agentNoProxy: "localhost,127.0.0.1"
+
+---
+# Example 3: x86_64 with custom image and all shims
+architecture: x86_64
+
+kata-as-coco-runtime:
+  image:
+    reference: quay.io/kata-containers/kata-deploy
+  
+  env:
+    debug: "true"
+    shims: "qemu-coco-dev qemu-snp qemu-tdx qemu-nvidia-gpu-snp qemu-nvidia-gpu-tdx"
+    snapshotterHandlerMapping: "qemu-coco-dev:nydus,qemu-snp:nydus,qemu-tdx:nydus,qemu-nvidia-gpu-snp:nydus,qemu-nvidia-gpu-tdx:nydus"
+    
+  # Deploy on GPU nodes only
+  nodeSelector:
+    nvidia.com/gpu: "true"
+
+---
+# Example 4: Multi-installation on x86_64 (for testing multiple configurations)
+architecture: x86_64
+
+kata-as-coco-runtime:
+  env:
+    debug: "true"
+    shims: "qemu-snp"
+    snapshotterHandlerMapping: "qemu-snp:nydus"
+    multiInstallSuffix: "snp-only"
+
+
