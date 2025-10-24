@@ -1,0 +1,166 @@
+name: Helm Chart Validation
+
+on:
+  pull_request:
+    types:
+      - edited
+      - opened
+      - reopened
+      - synchronize
+
+jobs:
+  validate-templates:
+    name: Validate Helm Templates
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Update Helm dependencies
+        run: |
+          echo "📦 Updating Helm dependencies..."
+          helm dependency update
+          echo "✅ Dependencies updated"
+
+      - name: Test default template rendering
+        id: default
+        run: |
+          echo "🔍 Testing default template rendering..."
+          if helm template test-release . > /tmp/default-output.yaml 2> /tmp/default-error.txt; then
+            echo "✅ Default template renders successfully"
+            echo "result=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Default template rendering failed"
+            echo "result=failed" >> $GITHUB_OUTPUT
+            echo "::error::Default template rendering failed. See job output for details."
+            exit 1
+          fi
+
+      - name: Show default rendering errors (if any)
+        if: failure() && steps.default.outputs.result == 'failed'
+        run: |
+          echo "## ❌ Default Template Rendering Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Error Output:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/default-error.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### How to Fix:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Run \`helm template test-release .\` locally to reproduce" >> $GITHUB_STEP_SUMMARY
+          echo "2. Check the error message above for syntax or template errors" >> $GITHUB_STEP_SUMMARY
+          echo "3. Validate your changes with \`helm lint .\`" >> $GITHUB_STEP_SUMMARY
+          echo "4. Ensure all template variables are properly defined in values.yaml" >> $GITHUB_STEP_SUMMARY
+          
+          echo ""
+          echo "Error details:"
+          cat /tmp/default-error.txt
+
+      - name: Test x86_64 architecture
+        run: |
+          echo "🔍 Testing x86_64 architecture..."
+          helm template test-release . \
+            --set architecture=x86_64 \
+            > /tmp/x86_64-output.yaml
+          echo "✅ x86_64 template renders successfully"
+
+      - name: Test s390x architecture
+        run: |
+          echo "🔍 Testing s390x architecture..."
+          helm template test-release . \
+            -f values/kata-s390x.yaml \
+            > /tmp/s390x-output.yaml
+          echo "✅ s390x template renders successfully"
+
+      - name: Test aarch64 architecture
+        run: |
+          echo "🔍 Testing aarch64 architecture..."
+          helm template test-release . \
+            -f values/kata-aarch64.yaml \
+            > /tmp/aarch64-output.yaml
+          echo "✅ aarch64 template renders successfully"
+
+      - name: Test remote (peer-pods) architecture
+        run: |
+          echo "🔍 Testing remote (peer-pods) architecture..."
+          helm template test-release . \
+            -f values/kata-remote.yaml \
+            > /tmp/remote-output.yaml
+          echo "✅ remote template renders successfully"
+
+      - name: Validation Summary
+        if: success()
+        run: |
+          echo "## ✅ All Template Validations Passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Tested configurations:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Default (x86_64)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ s390x architecture" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ aarch64 architecture" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ remote (peer-pods)" >> $GITHUB_STEP_SUMMARY
+
+  helm-lint:
+    name: Helm Lint
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Update Helm dependencies
+        run: |
+          echo "📦 Updating Helm dependencies..."
+          helm dependency update
+          echo "✅ Dependencies updated"
+
+      - name: Run helm lint
+        id: lint
+        run: |
+          echo "🔍 Running helm lint..."
+          if helm lint . > /tmp/lint-output.txt 2>&1; then
+            echo "✅ Helm lint passed"
+            cat /tmp/lint-output.txt
+            echo "result=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Helm lint failed"
+            echo "result=failed" >> $GITHUB_OUTPUT
+            echo "::error::Helm lint failed. See job output for details."
+            exit 1
+          fi
+
+      - name: Show lint errors (if any)
+        if: failure() && steps.lint.outputs.result == 'failed'
+        run: |
+          echo "## ❌ Helm Lint Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Lint Output:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/lint-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### How to Fix:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Run \`helm lint .\` locally to reproduce" >> $GITHUB_STEP_SUMMARY
+          echo "2. Fix the issues reported in the lint output" >> $GITHUB_STEP_SUMMARY
+          echo "3. Common issues:" >> $GITHUB_STEP_SUMMARY
+          echo "   - Missing required values in values.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "   - Invalid YAML syntax in templates" >> $GITHUB_STEP_SUMMARY
+          echo "   - Undefined template variables" >> $GITHUB_STEP_SUMMARY
+          echo "   - Chart.yaml validation errors" >> $GITHUB_STEP_SUMMARY
+          
+          cat /tmp/lint-output.txt
+
+      - name: Lint Summary
+        if: success()
+        run: |
+          echo "## ✅ Helm Lint Passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat /tmp/lint-output.txt >> $GITHUB_STEP_SUMMARY
