@@ -1,0 +1,83 @@
+name: 'Setup RKE2 Kubernetes'
+description: 'Install RKE2 Kubernetes distribution'
+inputs:
+  extra-params:
+    description: 'Extra parameters for RKE2'
+    required: false
+    default: ''
+runs:
+  using: 'composite'
+  steps:
+    - name: Free up disk space
+      shell: bash
+      run: |
+        echo "🧹 Removing unnecessary directories to free up disk space..."
+        sudo rm -rf /usr/local/.ghcup
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /usr/local/share/boost
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        sudo rm -rf /usr/lib/jvm
+        sudo rm -rf /usr/share/swift
+        sudo rm -rf /usr/local/share/powershell
+        sudo rm -rf /usr/local/julia*
+        sudo rm -rf /opt/az
+        sudo rm -rf /usr/local/share/chromium
+        sudo rm -rf /opt/microsoft
+        sudo rm -rf /opt/google
+        sudo rm -rf /usr/lib/firefox
+        echo "✅ Disk space freed up"
+        df -h / | grep -v Filesystem
+
+    - name: Install RKE2
+      shell: bash
+      run: |
+        echo "📦 Installing RKE2..."
+        curl -sfL https://get.rke2.io | sudo sh -
+        
+        sudo systemctl enable --now rke2-server.service
+        
+        echo "⏳ Waiting for RKE2 to be ready..."
+        sleep 120
+    
+    - name: Setup kubectl
+      shell: bash
+      run: |
+        echo "🔧 Setting up kubectl..."
+        
+        # Link the kubectl binary into /usr/local/bin
+        sudo ln -sf /var/lib/rancher/rke2/bin/kubectl /usr/local/bin/kubectl
+        
+        mkdir -p ~/.kube
+        sudo cp /etc/rancher/rke2/rke2.yaml ~/.kube/config
+        sudo chown "${USER}":"${USER}" ~/.kube/config
+        
+        echo "✅ kubectl installed: $(kubectl version --client)"
+    
+    - name: Verify cluster
+      shell: bash
+      run: |
+        echo "🔍 Verifying RKE2 cluster..."
+        kubectl get nodes
+        kubectl get pods -A
+        
+        # Wait for system pods to be ready (excluding completed/job pods)
+        echo "⏳ Waiting for system pods..."
+        # Wait only for Running pods (not Completed/Job pods)
+        kubectl wait --for=condition=Ready pods --all -n kube-system --timeout=5m \
+          --field-selector=status.phase!=Succeeded,status.phase!=Failed || true
+        
+        # Verify all pods are either Running or Completed
+        NOT_READY=$(kubectl get pods -n kube-system -o json | \
+          jq -r '.items[] | select(.status.phase != "Running" and .status.phase != "Succeeded") | .metadata.name')
+        
+        if [ -n "$NOT_READY" ]; then
+          echo "❌ Some pods are not ready:"
+          echo "$NOT_READY"
+          kubectl get pods -A
+          exit 1
+        fi
+        
+        echo "✅ RKE2 cluster is ready!"
