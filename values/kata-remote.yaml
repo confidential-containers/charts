@@ -20,3 +20,12 @@ kata-as-coco-runtime:
   env:
     debug: "false"
     <<: *remote_shims
+
+kata-as-coco-runtime-for-ci:
+  <<: *commonConfig
+  
+  env:
+    debug: "true"
+    <<: *remote_shims
+    _experimentalSetupSnapshotter: "nydus"
+    _experimentalForceGuestPull: ""

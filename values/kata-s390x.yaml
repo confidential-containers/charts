@@ -22,3 +22,12 @@ kata-as-coco-runtime:
   env:
     debug: "false"
     <<: *s390x_shims
+
+kata-as-coco-runtime-for-ci:
+  <<: *commonConfig
+  
+  env:
+    debug: "true"
+    <<: *s390x_shims
+    _experimentalSetupSnapshotter: "nydus"
+    _experimentalForceGuestPull: ""
