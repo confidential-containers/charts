@@ -1,0 +1,240 @@
+name: Run Test Pod
+description: Deploy and verify a test pod using Kata runtime
+
+inputs:
+  runtime-class:
+    description: 'RuntimeClass to use for the test pod'
+    required: true
+  namespace:
+    description: 'Kubernetes namespace for test pod'
+    required: false
+    default: 'default'
+  pod-name:
+    description: 'Name of the test pod'
+    required: false
+    default: 'kata-test-pod'
+  timeout:
+    description: 'Timeout for pod to become ready'
+    required: false
+    default: '5m'
+
+outputs:
+  pod-status:
+    description: 'Final status of the test pod'
+    value: ${{ steps.check-status.outputs.status }}
+
+runs:
+  using: composite
+  steps:
+    - name: Verify cluster health
+      shell: bash
+      run: |
+        set -e  # Exit on any error
+        echo "🏥 Checking cluster health before running test pod..."
+        
+        # Retry kubectl cluster-info with exponential backoff
+        MAX_RETRIES=5
+        RETRY_DELAY=2
+        
+        for attempt in $(seq 1 $MAX_RETRIES); do
+          echo "  Attempt $attempt/$MAX_RETRIES: Checking API server..."
+          
+          if kubectl cluster-info 2>&1 | grep -q "is running"; then
+            echo "✅ Kubernetes API server is responding"
+            break
+          else
+            if [ $attempt -eq $MAX_RETRIES ]; then
+              echo "❌ Kubernetes API server is not responding after $MAX_RETRIES attempts"
+              echo ""
+              echo "Cluster info:"
+              kubectl cluster-info dump --output-directory=/tmp/cluster-info --namespaces=kube-system 2>&1 || true
+              echo ""
+              echo "System pods:"
+              kubectl get pods -n kube-system 2>&1 || echo "Failed to get pods"
+              echo ""
+              echo "Nodes:"
+              kubectl get nodes 2>&1 || echo "Failed to get nodes"
+              exit 1
+            fi
+            echo "  API server not ready, waiting ${RETRY_DELAY}s..."
+            sleep $RETRY_DELAY
+            RETRY_DELAY=$((RETRY_DELAY * 2))
+          fi
+        done
+        
+        # Check nodes are ready
+        echo ""
+        echo "📋 Node status:"
+        kubectl get nodes
+        
+        NOT_READY_NODES=$(kubectl get nodes --no-headers 2>/dev/null | grep -v " Ready " | wc -l || echo "0")
+        NOT_READY_NODES=$(echo "$NOT_READY_NODES" | tr -d ' \n')  # Remove spaces and newlines
+        if [ "$NOT_READY_NODES" -gt 0 ] 2>/dev/null || [ "$NOT_READY_NODES" = "" ]; then
+          echo "⚠️  Warning: Some nodes are not ready"
+          kubectl get nodes
+        fi
+        
+        echo ""
+        echo "📋 System pods status:"
+        kubectl get pods -n kube-system
+        
+        echo "✅ Cluster health check passed"
+
+    - name: Create test pod
+      shell: bash
+      run: |
+        set -e  # Exit on any error
+        echo "🚀 Creating test pod with RuntimeClass: ${{ inputs.runtime-class }}"
+        
+        cat > /tmp/test-pod.yaml <<EOF
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: ${{ inputs.pod-name }}
+          namespace: ${{ inputs.namespace }}
+          labels:
+            app: kata-test
+        spec:
+          runtimeClassName: ${{ inputs.runtime-class }}
+          containers:
+          - name: test
+            image: quay.io/quay/busybox:latest
+            command: ['sh', '-c', 'echo "Hello from Kata Containers!" && sleep 30']
+          restartPolicy: Never
+        EOF
+        
+        # Retry kubectl apply with exponential backoff
+        MAX_RETRIES=3
+        RETRY_DELAY=5
+        
+        for attempt in $(seq 1 $MAX_RETRIES); do
+          echo "  Attempt $attempt/$MAX_RETRIES: Applying pod manifest..."
+          
+          if kubectl apply -f /tmp/test-pod.yaml 2>&1; then
+            echo "✅ Test pod created successfully"
+            break
+          else
+            if [ $attempt -eq $MAX_RETRIES ]; then
+              echo "❌ Failed to create test pod after $MAX_RETRIES attempts"
+              echo ""
+              echo "Checking API server:"
+              kubectl cluster-info || true
+              exit 1
+            fi
+            echo "  Failed to create pod, waiting ${RETRY_DELAY}s before retry..."
+            sleep $RETRY_DELAY
+            RETRY_DELAY=$((RETRY_DELAY * 2))
+          fi
+        done
+
+    - name: Wait for pod
+      shell: bash
+      run: |
+        set -e  # Exit on any error
+        echo "⏳ Waiting for pod to start (timeout: ${{ inputs.timeout }})..."
+        
+        # Wait for pod to be scheduled
+        SUCCESS=false
+        for i in {1..30}; do
+          POD_PHASE=$(kubectl get pod ${{ inputs.pod-name }} -n ${{ inputs.namespace }} -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+          echo "  Attempt $i/30: Pod phase is: $POD_PHASE"
+          
+          if [ "$POD_PHASE" = "Running" ] || [ "$POD_PHASE" = "Succeeded" ]; then
+            echo "✅ Pod is in $POD_PHASE state"
+            SUCCESS=true
+            break
+          elif [ "$POD_PHASE" = "Failed" ]; then
+            echo "❌ Pod failed"
+            kubectl describe pod ${{ inputs.pod-name }} -n ${{ inputs.namespace }}
+            exit 1
+          fi
+          
+          sleep 10
+        done
+        
+        if [ "$SUCCESS" = "false" ]; then
+          echo "❌ Timeout: Pod did not reach Running/Succeeded state"
+          kubectl describe pod ${{ inputs.pod-name }} -n ${{ inputs.namespace }}
+          exit 1
+        fi
+
+    - name: Check pod status
+      id: check-status
+      shell: bash
+      run: |
+        set -e  # Exit on any error
+        echo "🔍 Checking final pod status..."
+        
+        kubectl get pod ${{ inputs.pod-name }} -n ${{ inputs.namespace }}
+        
+        POD_PHASE=$(kubectl get pod ${{ inputs.pod-name }} -n ${{ inputs.namespace }} -o jsonpath='{.status.phase}')
+        
+        echo ""
+        echo "Pod phase: $POD_PHASE"
+        
+        if [ "$POD_PHASE" = "Running" ] || [ "$POD_PHASE" = "Succeeded" ]; then
+          echo "✅ Pod reached $POD_PHASE state successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Pod did not reach Running/Succeeded state (current: $POD_PHASE)"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          kubectl describe pod ${{ inputs.pod-name }} -n ${{ inputs.namespace }}
+          exit 1
+        fi
+
+    - name: Show pod details
+      shell: bash
+      run: |
+        echo "📋 Pod details:"
+        kubectl describe pod ${{ inputs.pod-name }} -n ${{ inputs.namespace }}
+
+    - name: Show pod logs
+      shell: bash
+      run: |
+        echo "📋 Pod logs:"
+        kubectl logs ${{ inputs.pod-name }} -n ${{ inputs.namespace }} || echo "No logs available yet"
+
+    - name: Verify Kata runtime is used
+      shell: bash
+      run: |
+        set -e  # Exit on any error
+        echo "🔍 Verifying Kata runtime is actually being used..."
+        
+        # Get the node the pod is running on
+        NODE=$(kubectl get pod ${{ inputs.pod-name }} -n ${{ inputs.namespace }} -o jsonpath='{.spec.nodeName}')
+        if [ -z "$NODE" ]; then
+          echo "❌ Failed to get node name for pod"
+          exit 1
+        fi
+        echo "Pod is running on node: $NODE"
+        
+        # In kind, we can check the container runtime via docker
+        if command -v docker &> /dev/null; then
+          echo ""
+          echo "Container processes on the node:"
+          docker exec ${NODE} ps aux | grep -E "containerd|qemu" | head -10 || true
+        fi
+        
+        # Check RuntimeClass in pod spec
+        RUNTIME_CLASS=$(kubectl get pod ${{ inputs.pod-name }} -n ${{ inputs.namespace }} -o jsonpath='{.spec.runtimeClassName}')
+        echo ""
+        echo "Pod RuntimeClass: $RUNTIME_CLASS"
+        echo "Expected RuntimeClass: ${{ inputs.runtime-class }}"
+        
+        if [ "$RUNTIME_CLASS" = "${{ inputs.runtime-class }}" ]; then
+          echo "✅ Pod is using the correct RuntimeClass"
+        else
+          echo "❌ Pod RuntimeClass mismatch!"
+          echo "   Expected: ${{ inputs.runtime-class }}"
+          echo "   Got: $RUNTIME_CLASS"
+          kubectl describe pod ${{ inputs.pod-name }} -n ${{ inputs.namespace }}
+          exit 1
+        fi
+
+    - name: Cleanup test pod
+      if: always()
+      shell: bash
+      run: |
+        echo "🗑️  Cleaning up test pod..."
+        kubectl delete pod ${{ inputs.pod-name }} -n ${{ inputs.namespace }} --ignore-not-found=true
+        echo "✅ Test pod cleaned up"
