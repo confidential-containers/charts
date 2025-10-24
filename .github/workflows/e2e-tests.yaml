@@ -1,0 +1,507 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    types:
+      - edited
+      - opened
+      - reopened
+      - synchronize
+  workflow_dispatch:
+
+jobs:
+  check-changes:
+    name: Check What Changed
+    runs-on: ubuntu-24.04
+    outputs:
+      kata-deploy-version-changed: ${{ steps.check-appversion.outputs.changed }}
+      templates-changed: ${{ steps.check-templates.outputs.changed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if kata-deploy dependency version changed
+        id: check-appversion
+        run: |
+          echo "🔍 Checking if production kata-deploy dependency version in Chart.yaml changed..."
+          
+          # For workflow_dispatch, always run (set to true)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "ℹ️  Manual trigger - will run all tests"
+            exit 0
+          fi
+          
+          # Get the base branch for PR
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          
+          # Check if the production kata-deploy version changed (kata-as-coco-runtime)
+          # Specifically look for the kata-deploy dependency WITHOUT the "-for-ci" alias
+          # We extract the section between "name: kata-deploy" and the next dependency or end
+          # and check if the version line changed, excluding the CI variant (0.0.0-dev)
+          
+          if git diff "${BASE_SHA}" HEAD -- Chart.yaml | \
+             grep -B1 -A3 'alias: kata-as-coco-runtime$' | \
+             grep -E '^\+.*version:' | \
+             grep -v '0.0.0-dev' || \
+             git diff "${BASE_SHA}" HEAD -- Chart.yaml | \
+             grep -B1 -A3 'alias: kata-as-coco-runtime$' | \
+             grep -E '^\-.*version:' | \
+             grep -v '0.0.0-dev'; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Production kata-deploy version changed - will run standard deployment test"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Production kata-deploy version unchanged - will skip standard deployment test"
+          fi
+
+      - name: Check if templates changed
+        id: check-templates
+        run: |
+          echo "🔍 Checking if templates/values changed..."
+          
+          # For workflow_dispatch, always run (set to true)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "ℹ️  Manual trigger - will run all tests"
+            exit 0
+          fi
+          
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          
+          if git diff --name-only "${BASE_SHA}" HEAD | grep -E '(templates/|values\.yaml|values/|Chart\.yaml)'; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Templates/values changed - will run all E2E tests"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No template/values changes - will skip template-dependent tests"
+          fi
+
+  e2e-tests:
+    name: E2E (${{ matrix.deployment-type }} / ${{ matrix.k8s-distro }}${{ matrix.image-pull-mode && format(' / {0}', matrix.image-pull-mode) || '' }})
+    runs-on: ubuntu-24.04
+    needs: check-changes
+    if: needs.check-changes.outputs.templates-changed == 'true' || needs.check-changes.outputs.kata-deploy-version-changed == 'true'
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # CI Variant - K3s with both pull modes
+          - deployment-type: ci
+            k8s-distro: k3s
+            image-pull-mode: nydus
+          - deployment-type: ci
+            k8s-distro: k3s
+            image-pull-mode: experimental-force-guest-pull
+          # CI Variant - K0s with both pull modes
+          - deployment-type: ci
+            k8s-distro: k0s
+            image-pull-mode: nydus
+          - deployment-type: ci
+            k8s-distro: k0s
+            image-pull-mode: experimental-force-guest-pull
+          # CI Variant - RKE2 with both pull modes
+          - deployment-type: ci
+            k8s-distro: rke2
+            image-pull-mode: nydus
+          - deployment-type: ci
+            k8s-distro: rke2
+            image-pull-mode: experimental-force-guest-pull
+          # CI Variant - MicroK8s with both pull modes
+          - deployment-type: ci
+            k8s-distro: microk8s
+            image-pull-mode: nydus
+          - deployment-type: ci
+            k8s-distro: microk8s
+            image-pull-mode: experimental-force-guest-pull
+          # CI Variant - Kubeadm with containerd latest - both pull modes
+          - deployment-type: ci
+            k8s-distro: kubeadm-containerd-latest
+            image-pull-mode: nydus
+          - deployment-type: ci
+            k8s-distro: kubeadm-containerd-latest
+            image-pull-mode: experimental-force-guest-pull
+          # CI Variant - Kubeadm with containerd 1.7 - both pull modes
+          - deployment-type: ci
+            k8s-distro: kubeadm-containerd-1.7
+            image-pull-mode: nydus
+          - deployment-type: ci
+            k8s-distro: kubeadm-containerd-1.7
+            image-pull-mode: experimental-force-guest-pull
+          ## CI Variant - Kubeadm with CRI-O
+          #- deployment-type: ci
+          #  k8s-distro: kubeadm-crio
+          
+          # Standard Deployment - K3s with both pull modes
+          - deployment-type: standard
+            k8s-distro: k3s
+            image-pull-mode: nydus
+          - deployment-type: standard
+            k8s-distro: k3s
+            image-pull-mode: experimental-force-guest-pull
+          # Standard Deployment - K0s with both pull modes
+          - deployment-type: standard
+            k8s-distro: k0s
+            image-pull-mode: nydus
+          - deployment-type: standard
+            k8s-distro: k0s
+            image-pull-mode: experimental-force-guest-pull
+          # Standard Deployment - RKE2 with both pull modes
+          - deployment-type: standard
+            k8s-distro: rke2
+            image-pull-mode: nydus
+          - deployment-type: standard
+            k8s-distro: rke2
+            image-pull-mode: experimental-force-guest-pull
+          # Standard Deployment - MicroK8s with both pull modes
+          - deployment-type: standard
+            k8s-distro: microk8s
+            image-pull-mode: nydus
+          - deployment-type: standard
+            k8s-distro: microk8s
+            image-pull-mode: experimental-force-guest-pull
+          # Standard Deployment - Kubeadm with containerd latest - both pull modes
+          - deployment-type: standard
+            k8s-distro: kubeadm-containerd-latest
+            image-pull-mode: nydus
+          - deployment-type: standard
+            k8s-distro: kubeadm-containerd-latest
+            image-pull-mode: experimental-force-guest-pull
+          # Standard Deployment - Kubeadm with containerd 1.7 - both pull modes
+          - deployment-type: standard
+            k8s-distro: kubeadm-containerd-1.7
+            image-pull-mode: nydus
+          - deployment-type: standard
+            k8s-distro: kubeadm-containerd-1.7
+            image-pull-mode: experimental-force-guest-pull
+          ## Standard Deployment - Kubeadm with CRI-O
+          #- deployment-type: standard
+          #  k8s-distro: kubeadm-crio
+    
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    steps:
+      - name: Check if this matrix entry should run
+        id: should-run
+        run: |
+          # CI tests run only when templates changed
+          # Standard tests run only when kata-deploy version changed
+          if [ "${{ matrix.deployment-type }}" = "ci" ] && [ "${{ needs.check-changes.outputs.templates-changed }}" = "true" ]; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+            echo "✅ CI test will run (templates changed)"
+          elif [ "${{ matrix.deployment-type }}" = "standard" ] && [ "${{ needs.check-changes.outputs.kata-deploy-version-changed }}" = "true" ]; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+            echo "✅ Standard test will run (kata-deploy version changed)"
+          else
+            echo "should-run=false" >> $GITHUB_OUTPUT
+            echo "⏭️  Skipping this test (conditions not met)"
+          fi
+      
+      - name: Checkout code
+        if: steps.should-run.outputs.should-run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Kubernetes cluster (k3s)
+        if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'k3s'
+        uses: ./.github/actions/setup-k8s-k3s
+      
+      - name: Setup Kubernetes cluster (k0s)
+        if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'k0s'
+        uses: ./.github/actions/setup-k8s-k0s
+      
+      - name: Setup Kubernetes cluster (rke2)
+        if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'rke2'
+        uses: ./.github/actions/setup-k8s-rke2
+      
+      - name: Setup Kubernetes cluster (microk8s)
+        if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'microk8s'
+        uses: ./.github/actions/setup-k8s-microk8s
+      
+      - name: Setup Kubernetes cluster (kubeadm with containerd latest)
+        if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'kubeadm-containerd-latest'
+        uses: ./.github/actions/setup-k8s-kubeadm
+        with:
+          container-runtime: containerd
+          runtime-version: latest
+      
+      - name: Setup Kubernetes cluster (kubeadm with containerd 1.7)
+        if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'kubeadm-containerd-1.7'
+        uses: ./.github/actions/setup-k8s-kubeadm
+        with:
+          container-runtime: containerd
+          runtime-version: "1.7"
+      
+      - name: Setup Kubernetes cluster (kubeadm with CRI-O)
+        if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'kubeadm-crio'
+        uses: ./.github/actions/setup-k8s-kubeadm
+        with:
+          container-runtime: crio
+          runtime-version: latest
+
+      - name: Determine k8s distribution name
+        if: steps.should-run.outputs.should-run == 'true'
+        id: k8s-distro-name
+        run: |
+          case "${{ matrix.k8s-distro }}" in
+            k3s) echo "name=k3s" >> $GITHUB_OUTPUT ;;
+            k0s) echo "name=k0s" >> $GITHUB_OUTPUT ;;
+            rke2) echo "name=rke2" >> $GITHUB_OUTPUT ;;
+            microk8s) echo "name=microk8s" >> $GITHUB_OUTPUT ;;
+            kubeadm-containerd-latest) echo "name=k8s" >> $GITHUB_OUTPUT ;;
+            kubeadm-containerd-1.7) echo "name=k8s" >> $GITHUB_OUTPUT ;;
+            kubeadm-crio) echo "name=k8s" >> $GITHUB_OUTPUT ;;
+            *) echo "name=k8s" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Setup Helm
+        if: steps.should-run.outputs.should-run == 'true'
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.13.1'
+
+      - name: Update Helm dependencies
+        if: steps.should-run.outputs.should-run == 'true'
+        run: |
+          echo "📦 Updating Helm chart dependencies..."
+          helm dependency update
+          echo "✅ Dependencies updated"
+
+      - name: Prepare Helm extra args
+        if: steps.should-run.outputs.should-run == 'true'
+        id: helm-args
+        run: |
+          # Determine which chart variant to use based on deployment type
+          if [ "${{ matrix.deployment-type }}" = "ci" ]; then
+            CHART_VARIANT="kata-as-coco-runtime-for-ci"
+            ARGS="--set kata-as-coco-runtime.enabled=false --set ${CHART_VARIANT}.enabled=true"
+          else
+            CHART_VARIANT="kata-as-coco-runtime"
+            ARGS="--set ${CHART_VARIANT}.enabled=true"
+          fi
+          
+          # Add k8s distribution
+          ARGS="${ARGS} --set ${CHART_VARIANT}.k8sDistribution=${{ steps.k8s-distro-name.outputs.name }}"
+          
+          # Add image pull mode specific flags (only for CI, standard uses defaults)
+          if [ "${{ matrix.deployment-type }}" = "ci" ] && [ "${{ matrix.image-pull-mode }}" = "experimental-force-guest-pull" ]; then
+            ARGS="${ARGS} --set ${CHART_VARIANT}.env.snapshotterHandlerMapping='' --set ${CHART_VARIANT}.env.pullTypeMapping=\"\" --set ${CHART_VARIANT}.env._experimentalSetupSnapshotter=\"\" --set ${CHART_VARIANT}.env._experimentalForceGuestPull=qemu-coco-dev"
+          fi
+          
+          echo "args=${ARGS}" >> $GITHUB_OUTPUT
+
+      - name: Determine deployment parameters
+        if: steps.should-run.outputs.should-run == 'true'
+        id: deployment-params
+        run: |
+          if [ "${{ matrix.deployment-type }}" = "ci" ]; then
+            echo "release-name=coco-ci" >> $GITHUB_OUTPUT
+            echo "daemonset-label=name=kata-as-coco-runtime-for-ci" >> $GITHUB_OUTPUT
+            echo "expected-runtimeclasses=kata-qemu-coco-dev" >> $GITHUB_OUTPUT
+            echo "test-pod-name=kata-ci-test-pod" >> $GITHUB_OUTPUT
+          else
+            echo "release-name=coco" >> $GITHUB_OUTPUT
+            echo "daemonset-label=name=kata-as-coco-runtime" >> $GITHUB_OUTPUT
+            echo "expected-runtimeclasses=kata-qemu-coco-dev kata-qemu-snp kata-qemu-tdx" >> $GITHUB_OUTPUT
+            echo "test-pod-name=kata-standard-test-pod" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install chart
+        if: steps.should-run.outputs.should-run == 'true'
+        uses: ./.github/actions/install-chart
+        with:
+          release-name: ${{ steps.deployment-params.outputs.release-name }}
+          namespace: kube-system
+          extra-args: ${{ steps.helm-args.outputs.args }}
+          wait-timeout: 15m
+
+      - name: Verify deployment
+        if: steps.should-run.outputs.should-run == 'true'
+        uses: ./.github/actions/verify-deployment
+        with:
+          namespace: kube-system
+          expected-runtime-classes: ${{ steps.deployment-params.outputs.expected-runtimeclasses }}
+          daemonset-timeout: 15m
+          daemonset-label: ${{ steps.deployment-params.outputs.daemonset-label }}
+
+      - name: Run test pod
+        if: steps.should-run.outputs.should-run == 'true'
+        uses: ./.github/actions/run-test-pod
+        with:
+          runtime-class: kata-qemu-coco-dev
+          namespace: default
+          pod-name: ${{ steps.deployment-params.outputs.test-pod-name }}
+          timeout: 5m
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "📋 Collecting diagnostic information..."
+          
+          echo "=== Helm releases ==="
+          helm list -A
+          
+          echo ""
+          echo "=== All pods ==="
+          kubectl get pods -A
+          
+          echo ""
+          echo "=== DaemonSet status ==="
+          kubectl get daemonset -n kube-system
+          
+          echo ""
+          echo "=== RuntimeClasses ==="
+          kubectl get runtimeclass
+          
+          echo ""
+          echo "=== Kata Containers Configuration ==="
+          RUNTIME_CLASS="kata-qemu-coco-dev"
+          # Extract the configuration file name from RuntimeClass (e.g., kata-qemu-coco-dev -> qemu-coco-dev)
+          CONFIG_NAME="${RUNTIME_CLASS#kata-}"
+          
+          # Get installation prefix from Helm values (defaults)
+          INSTALL_PREFIX="/opt/kata"
+          
+          CONFIG_FILE="${INSTALL_PREFIX}/share/defaults/kata-containers/configuration-${CONFIG_NAME}.toml"
+          
+          echo "RuntimeClass: ${RUNTIME_CLASS}"
+          echo "Configuration file: ${CONFIG_FILE}"
+          echo ""
+          
+          # Get node name
+          NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')
+          echo "Reading from node: ${NODE}"
+          echo ""
+          
+          # Create a temporary pod to read the configuration file
+          POD_NAME="kata-config-reader-$(date +%s)"
+          cat <<EOF | kubectl apply -f - >/dev/null
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: ${POD_NAME}
+            namespace: default
+          spec:
+            hostPID: true
+            hostNetwork: true
+            nodeName: ${NODE}
+            containers:
+            - name: reader
+              image: busybox:latest
+              command: ['sleep', '60']
+              volumeMounts:
+              - name: host-root
+                mountPath: /host
+                readOnly: true
+              securityContext:
+                privileged: true
+            volumes:
+            - name: host-root
+              hostPath:
+                path: /
+            restartPolicy: Never
+          EOF
+          
+          # Wait for pod to be ready
+          echo "Waiting for reader pod..."
+          kubectl wait --for=condition=Ready pod/${POD_NAME} -n default --timeout=30s >/dev/null 2>&1 || true
+          sleep 2
+          
+          # Read the configuration file
+          echo "--- ${CONFIG_FILE} ---"
+          if kubectl exec ${POD_NAME} -n default -- cat /host${CONFIG_FILE} 2>/dev/null; then
+            echo ""
+            echo "✅ Configuration file displayed successfully"
+          else
+            echo ""
+            echo "❌ Failed to read configuration file"
+            echo ""
+            echo "Attempting to list available configurations:"
+            kubectl exec ${POD_NAME} -n default -- ls -la /host${INSTALL_PREFIX}/share/defaults/kata-containers/ 2>/dev/null || echo "Failed to list directory"
+          fi
+          
+          # Cleanup
+          kubectl delete pod ${POD_NAME} -n default --ignore-not-found=true >/dev/null 2>&1 || true
+          
+          echo ""
+          echo "=== kata-deploy logs ==="
+          kubectl logs -n kube-system -l ${{ steps.deployment-params.outputs.daemonset-label }} --tail=200 --prefix=true || echo "No logs available"
+          
+          echo ""
+          echo "=== Events ==="
+          kubectl get events -A --sort-by='.lastTimestamp' | tail -50
+
+      - name: Uninstall chart
+        if: always()
+        run: |
+          RELEASE_NAME="${{ steps.deployment-params.outputs.release-name }}"
+          
+          # Check if release name was set (i.e., test actually ran)
+          if [ -z "${RELEASE_NAME}" ]; then
+            echo "⏭️  No chart to uninstall (test was skipped)"
+            exit 0
+          fi
+          
+          echo "🗑️  Uninstalling chart: ${RELEASE_NAME}..."
+          helm uninstall ${RELEASE_NAME} -n kube-system --wait --timeout 5m || true
+          
+          echo "🔍 Verifying cleanup..."
+          echo "Remaining pods:"
+          kubectl get pods -n kube-system -l app.kubernetes.io/instance=${RELEASE_NAME} || echo "No pods found"
+          
+          echo "Remaining RuntimeClasses:"
+          kubectl get runtimeclass || echo "No RuntimeClasses found"
+
+
+  test-summary:
+    name: E2E Test Summary
+    runs-on: ubuntu-24.04
+    needs: [e2e-tests]
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "# E2E Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.e2e-tests.result }}" = "success" ]; then
+            echo "✅ E2E Tests (CI + Standard): **PASSED**" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.e2e-tests.result }}" = "skipped" ]; then
+            echo "⏭️ E2E Tests: **SKIPPED** (no changes triggering tests)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ E2E Tests: **FAILED**" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Coverage" >> $GITHUB_STEP_SUMMARY
+          echo "### K8s Distributions" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ k3s (nydus-snapshotter & experimental_force_guest_pull)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ k0s (nydus-snapshotter & experimental_force_guest_pull)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ rke2 (nydus-snapshotter & experimental_force_guest_pull)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ microk8s (nydus-snapshotter & experimental_force_guest_pull)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ kubeadm with containerd 1.7 (nydus-snapshotter & experimental_force_guest_pull)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ kubeadm with latest containerd (nydus-snapshotter & experimental_force_guest_pull)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Features Tested" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Helm chart installation" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ kata-deploy daemonset deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ RuntimeClass creation" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Pod scheduling with Kata runtime" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Image pulling with containerd (nydus snapshotter)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Image pulling with containerd (guest-pull mode)" >> $GITHUB_STEP_SUMMARY
+          #echo "- ✅ Image pulling with CRI-O" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ CI variant (kata-containers-latest)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Standard deployment (CoCo releases)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check overall tests status
+        run: |
+          # Check for failures (but allow skipped tests)
+          if [ "${{ needs.e2e-tests.result }}" = "failure" ]; then
+            echo "❌ E2E tests failed"
+            exit 1
+          fi
+          echo "✅ All E2E tests passed or were skipped as expected"
+
