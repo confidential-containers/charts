@@ -1,0 +1,144 @@
+name: Chart.lock Validation
+
+on:
+  pull_request:
+    types:
+      - edited
+      - opened
+      - reopened
+      - synchronize
+
+jobs:
+  validate-chart-lock:
+    name: Validate Chart.lock
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check Chart.lock for 0.0.0-dev entries
+        id: check
+        run: |
+          echo "🔍 Checking Chart.lock for 0.0.0-dev entries..."
+          
+          if [ ! -f Chart.lock ]; then
+            echo "ℹ️  No Chart.lock file found"
+            echo "has_dev_version=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Check if Chart.lock contains 0.0.0-dev version
+          if grep -q "version: 0.0.0-dev" Chart.lock; then
+            echo "❌ Found 0.0.0-dev in Chart.lock"
+            echo "has_dev_version=true" >> $GITHUB_OUTPUT
+            
+            echo ""
+            echo "Problematic entries:"
+            grep -B2 -A2 "version: 0.0.0-dev" Chart.lock || true
+            
+            echo ""
+            echo "::error::Chart.lock contains 0.0.0-dev entries that must be removed"
+            
+          else
+            echo "✅ No 0.0.0-dev entries found in Chart.lock"
+            echo "has_dev_version=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Add comment to PR
+        if: steps.check.outputs.has_dev_version == 'true'
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --body "## ❌ Chart.lock Contains 0.0.0-dev Entries
+
+          Found \`0.0.0-dev\` entries in \`Chart.lock\` that must be removed.
+
+          **Why this is a problem:**
+          The \`kata-as-coco-runtime-for-ci\` dependency uses \`version: 0.0.0-dev\` which is:
+          - Only for CI testing
+          - Not a real release
+          - Should never be committed to Chart.lock
+
+          **How to fix:**
+
+          Manually edit Chart.lock to remove the entire dependency block containing \`version: 0.0.0-dev\`:
+
+          \`\`\`yaml
+          # Remove this entire block from Chart.lock:
+          - name: kata-deploy
+            repository: oci://ghcr.io/kata-containers/kata-deploy-charts
+            version: 0.0.0-dev
+          \`\`\`
+
+          Then commit and push:
+          \`\`\`bash
+          git add Chart.lock
+          git commit -m \"fix: Remove 0.0.0-dev from Chart.lock\"
+          git push
+          \`\`\`
+
+          **Why not regenerate with helm dependency update?**
+          Running \`helm dependency update\` would add the 0.0.0-dev entry back. This entry only exists for CI testing and should never be in Chart.lock.
+
+          **Prevention:**
+          Chart.lock is managed by CI/CD workflows. Don't manually run \`helm dependency update\` - the prepare-release script handles updates correctly."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fail if 0.0.0-dev found
+        if: steps.check.outputs.has_dev_version == 'true'
+        run: |
+          echo "::error::Chart.lock contains 0.0.0-dev entries that must be removed"
+          exit 1
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ steps.check.outputs.has_dev_version }}" = "true" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## ❌ Chart.lock Validation Failed
+          
+          Found `0.0.0-dev` entries in Chart.lock that must be removed.
+          
+          ### Why this is a problem
+          
+          The `kata-as-coco-runtime-for-ci` dependency uses `version: 0.0.0-dev` which is:
+          - Only used for CI testing
+          - Not a real release
+          - Should never be committed to Chart.lock
+          
+          ### How to fix
+          
+          Manually edit Chart.lock to remove the entire dependency block containing `version: 0.0.0-dev`:
+          
+          ```yaml
+          # Remove this entire block:
+          - name: kata-deploy
+            repository: oci://ghcr.io/kata-containers/kata-deploy-charts
+            version: 0.0.0-dev
+          ```
+          
+          Then commit:
+          ```bash
+          git add Chart.lock
+          git commit -m "fix: Remove 0.0.0-dev from Chart.lock"
+          git push
+          ```
+          
+          ### Why not regenerate?
+          
+          **Don't run `helm dependency update`** - it will add 0.0.0-dev back.
+          This entry only exists for CI testing.
+          
+          ### Prevention
+          
+          - Chart.lock is managed by CI/CD workflows
+          - The prepare-release script handles updates correctly
+          - Don't manually run `helm dependency update`
+          EOF
+          else
+            echo "## ✅ Chart.lock Validated" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No \`0.0.0-dev\` entries found in Chart.lock." >> $GITHUB_STEP_SUMMARY
+          fi
+

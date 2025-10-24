@@ -22,3 +22,13 @@ kata-as-coco-runtime:
   env:
     debug: "false"
     <<: *aarch64_shims
+
+kata-as-coco-runtime-for-ci:
+  <<: *commonConfig
+  
+  env:
+    debug: "true"
+    <<: *aarch64_shims
+    _experimentalSetupSnapshotter: "nydus"
+    _experimentalForceGuestPull: ""
+
