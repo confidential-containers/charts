@@ -1,0 +1,479 @@
+name: 'Setup Kubernetes'
+description: 'Install Kubernetes distribution (kubeadm, k3s, k0s, rke2, or microk8s)'
+inputs:
+  distribution:
+    description: 'Kubernetes distribution to install (kubeadm, k3s, k0s, rke2, microk8s)'
+    required: true
+    default: 'kubeadm'
+  extra-params:
+    description: 'Extra parameters for the distribution installer'
+    required: false
+    default: ''
+  container-runtime:
+    description: 'Container runtime for kubeadm (containerd or crio) - only for kubeadm'
+    required: false
+    default: 'containerd'
+  runtime-version:
+    description: 'Container runtime version - only for kubeadm'
+    required: false
+    default: 'latest'
+runs:
+  using: 'composite'
+  steps:
+    - name: Free up disk space
+      shell: bash
+      run: |
+        echo "🧹 Removing unnecessary directories to free up disk space..."
+        sudo rm -rf /usr/local/.ghcup
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /usr/local/share/boost
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        sudo rm -rf /usr/lib/jvm
+        sudo rm -rf /usr/share/swift
+        sudo rm -rf /usr/local/share/powershell
+        sudo rm -rf /usr/local/julia*
+        sudo rm -rf /opt/az
+        sudo rm -rf /usr/local/share/chromium
+        sudo rm -rf /opt/microsoft
+        sudo rm -rf /opt/google
+        sudo rm -rf /usr/lib/firefox
+        echo "✅ Disk space freed up"
+        df -h / | grep -v Filesystem
+
+    - name: Prepare system for kubeadm
+      if: ${{ inputs.distribution == 'kubeadm' }}
+      shell: bash
+      run: |
+        echo "🔧 Preparing system for Kubernetes..."
+        
+        # Install system dependencies
+        sudo apt-get update
+        sudo apt-get -y install runc
+        
+        # Load required kernel modules
+        sudo modprobe overlay
+        sudo modprobe br_netfilter
+        
+        # Set network parameters
+        sudo sysctl -w net.bridge.bridge-nf-call-iptables=1
+        sudo sysctl -w net.ipv4.ip_forward=1
+        sudo sysctl -w net.bridge.bridge-nf-call-ip6tables=1
+        
+        # Disable swap
+        sudo swapoff -a
+
+    - name: Install container runtime (kubeadm - containerd)
+      if: ${{ inputs.distribution == 'kubeadm' && inputs.container-runtime == 'containerd' }}
+      shell: bash
+      run: |
+        echo "📦 Installing containerd ${{ inputs.runtime-version }}..."
+        
+        VERSION="${{ inputs.runtime-version }}"
+        ARCH=$(uname -m)
+        case "${ARCH}" in
+          x86_64) ARCH="amd64" ;;
+          aarch64) ARCH="arm64" ;;
+        esac
+        
+        # Setup GitHub API authentication if available
+        CURL_AUTH_HEADER=""
+        if [ -n "${GH_TOKEN:-}" ]; then
+          CURL_AUTH_HEADER="Authorization: Bearer ${GH_TOKEN}"
+        fi
+        
+        # Determine full version
+        if [ "${VERSION}" = "latest" ]; then
+          echo "🔍 Fetching latest containerd release from GitHub API..."
+          if [ -n "${CURL_AUTH_HEADER}" ]; then
+            API_RESPONSE=$(curl -sSf -H "${CURL_AUTH_HEADER}" https://api.github.com/repos/containerd/containerd/releases)
+          else
+            API_RESPONSE=$(curl -sSf https://api.github.com/repos/containerd/containerd/releases)
+          fi
+          
+          if [ -z "${API_RESPONSE}" ]; then
+            echo "❌ Failed to fetch containerd releases from GitHub API"
+            exit 1
+          fi
+          
+          FULL_VERSION=$(echo "${API_RESPONSE}" | jq -r '[.[] | select(.tag_name | contains("api/") | not)][0].tag_name // "ERROR"')
+          
+          if [ "${FULL_VERSION}" = "ERROR" ] || [ -z "${FULL_VERSION}" ]; then
+            echo "❌ Failed to find a valid containerd binary release"
+            exit 1
+          fi
+          
+          FULL_VERSION=$(echo "${FULL_VERSION}" | sed 's/^v//')
+          echo "ℹ️  Using latest containerd release: v${FULL_VERSION}"
+        else
+          echo "🔍 Fetching containerd ${VERSION}.x releases from GitHub API..."
+          if [ -n "${CURL_AUTH_HEADER}" ]; then
+            API_RESPONSE=$(curl -sSf -H "${CURL_AUTH_HEADER}" https://api.github.com/repos/containerd/containerd/releases)
+          else
+            API_RESPONSE=$(curl -sSf https://api.github.com/repos/containerd/containerd/releases)
+          fi
+          
+          if [ -z "${API_RESPONSE}" ]; then
+            echo "❌ Failed to fetch containerd releases from GitHub API"
+            exit 1
+          fi
+          
+          FULL_VERSION=$(echo "${API_RESPONSE}" | jq -r '[.[] | select(.tag_name | contains("api/") | not)] | .[].tag_name' | grep "^v${VERSION}\." | head -1 | sed 's/^v//')
+          
+          if [ -z "${FULL_VERSION}" ]; then
+            echo "❌ No containerd ${VERSION}.x release found"
+            exit 1
+          fi
+          
+          echo "ℹ️  Using latest ${VERSION}.x release: v${FULL_VERSION}"
+        fi
+        
+        echo "📥 Downloading containerd ${FULL_VERSION}..."
+        curl -fsSL -o containerd.tar.gz \
+          "https://github.com/containerd/containerd/releases/download/v${FULL_VERSION}/containerd-${FULL_VERSION}-linux-${ARCH}.tar.gz"
+        
+        sudo tar -C /usr/local -xzf containerd.tar.gz
+        rm containerd.tar.gz
+        
+        sudo curl -fsSL -o /etc/systemd/system/containerd.service \
+          https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+        
+        sudo mkdir -p /etc/containerd
+        containerd config default | sed -e 's/SystemdCgroup = false/SystemdCgroup = true/' | sudo tee /etc/containerd/config.toml
+        
+        sudo systemctl daemon-reload
+        sudo systemctl enable --now containerd
+        sudo systemctl restart containerd
+        
+        echo "✅ containerd installed and running"
+
+    - name: Install container runtime (kubeadm - crio)
+      if: ${{ inputs.distribution == 'kubeadm' && inputs.container-runtime == 'crio' }}
+      shell: bash
+      run: |
+        echo "📦 Installing CRI-O (version aligned with Kubernetes)..."
+        
+        KUBERNETES_VERSION=$(curl -Ls https://dl.k8s.io/release/stable.txt | cut -d. -f-2)
+        
+        if [ -z "${KUBERNETES_VERSION}" ]; then
+          echo "❌ Failed to determine Kubernetes version"
+          exit 1
+        fi
+        
+        CRIO_VERSION="${KUBERNETES_VERSION}"
+        
+        echo "ℹ️  Kubernetes version: ${KUBERNETES_VERSION}"
+        echo "ℹ️  Checking for CRI-O version: ${CRIO_VERSION}"
+        
+        CRIO_REPO_URL="https://download.opensuse.org/repositories/isv:/cri-o:/stable:/${CRIO_VERSION}/deb/Release.key"
+        if ! curl -fsSL --head "${CRIO_REPO_URL}" >/dev/null 2>&1; then
+          echo "⚠️  CRI-O ${CRIO_VERSION} repository not found, finding latest available stable version..."
+          
+          CURL_AUTH_HEADER=""
+          if [ -n "${GH_TOKEN:-}" ]; then
+            CURL_AUTH_HEADER="Authorization: Bearer ${GH_TOKEN}"
+          fi
+          
+          echo "🔍 Fetching latest stable CRI-O release from GitHub API..."
+          if [ -n "${CURL_AUTH_HEADER}" ]; then
+            API_RESPONSE=$(curl -sSf -H "${CURL_AUTH_HEADER}" https://api.github.com/repos/cri-o/cri-o/releases)
+          else
+            API_RESPONSE=$(curl -sSf https://api.github.com/repos/cri-o/cri-o/releases)
+          fi
+          
+          if [ -z "${API_RESPONSE}" ]; then
+            echo "❌ Failed to fetch CRI-O releases from GitHub API"
+            exit 1
+          fi
+          
+          CRIO_VERSION=$(echo "${API_RESPONSE}" | jq -r '[.[] | select(.prerelease == false)][0].tag_name')
+          
+          if [ -z "${CRIO_VERSION}" ]; then
+            echo "❌ Failed to find latest stable CRI-O version"
+            exit 1
+          fi
+          
+          echo "ℹ️  Using latest available CRI-O version: ${CRIO_VERSION}"
+        else
+          echo "✅ CRI-O ${CRIO_VERSION} repository found"
+        fi
+        
+        echo "📦 Installing dependencies..."
+        sudo apt-get update
+        sudo apt-get install -y software-properties-common curl
+        
+        sudo mkdir -p /etc/apt/keyrings
+        
+        echo "📦 Adding Kubernetes repository (${KUBERNETES_VERSION})..."
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/${KUBERNETES_VERSION}/deb/Release.key | \
+          sudo gpg --batch --yes --no-tty --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        
+        echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${KUBERNETES_VERSION}/deb/ /" | \
+          sudo tee /etc/apt/sources.list.d/kubernetes.list
+        
+        echo "📦 Adding CRI-O repository (${CRIO_VERSION})..."
+        curl -fsSL https://download.opensuse.org/repositories/isv:/cri-o:/stable:/${CRIO_VERSION}/deb/Release.key | \
+          sudo gpg --batch --yes --no-tty --dearmor -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
+        
+        echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://download.opensuse.org/repositories/isv:/cri-o:/stable:/${CRIO_VERSION}/deb/ /" | \
+          sudo tee /etc/apt/sources.list.d/cri-o.list
+        
+        echo "📦 Installing CRI-O and dependencies..."
+        sudo apt-get update
+        sudo apt-get install -y cri-o cri-tools
+        
+        echo "⚙️  Configuring CRI-O default capabilities..."
+        sudo mkdir -p /etc/crio/crio.conf.d/
+        printf '%s\n' \
+          '[crio]' \
+          'storage_option = [' \
+          '        "overlay.skip_mount_home=true",' \
+          ']' \
+          '[crio.runtime]' \
+          'default_capabilities = [' \
+          '        "CHOWN",' \
+          '        "DAC_OVERRIDE",' \
+          '        "FSETID",' \
+          '        "FOWNER",' \
+          '        "SETGID",' \
+          '        "SETUID",' \
+          '        "SETPCAP",' \
+          '        "NET_BIND_SERVICE",' \
+          '        "KILL",' \
+          '        "SYS_CHROOT",' \
+          ']' \
+          | sudo tee /etc/crio/crio.conf.d/00-default-capabilities.conf >/dev/null
+        
+        sudo systemctl daemon-reload
+        sudo systemctl enable --now crio
+        sudo systemctl restart crio
+        
+        echo "✅ CRI-O installed and running"
+
+    - name: Install kubeadm, kubelet, kubectl
+      if: ${{ inputs.distribution == 'kubeadm' }}
+      shell: bash
+      run: |
+        echo "📦 Installing Kubernetes components..."
+        
+        K8S_VERSION=$(curl -Ls https://dl.k8s.io/release/stable.txt | cut -d. -f-2)
+        
+        curl -fsSL "https://pkgs.k8s.io/core:/stable:/${K8S_VERSION}/deb/Release.key" | \
+          sudo gpg --batch --yes --no-tty --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        
+        echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${K8S_VERSION}/deb/ /" | \
+          sudo tee /etc/apt/sources.list.d/kubernetes.list
+        
+        cat <<EOF | sudo tee /etc/apt/preferences.d/kubernetes
+        Package: kubelet kubeadm kubectl cri-tools kubernetes-cni
+        Pin: origin pkgs.k8s.io
+        Pin-Priority: 1000
+        EOF
+        
+        sudo apt-get update
+        sudo apt-get -y install kubeadm kubelet kubectl --allow-downgrades
+        sudo apt-mark hold kubeadm kubelet kubectl
+        
+        echo "✅ Kubernetes components installed"
+
+    - name: Initialize kubeadm cluster
+      if: ${{ inputs.distribution == 'kubeadm' }}
+      shell: bash
+      run: |
+        echo "🚀 Initializing Kubernetes cluster with kubeadm..."
+        
+        RUNTIME="${{ inputs.container-runtime }}"
+        
+        if [ "${RUNTIME}" = "crio" ]; then
+          CRI_SOCKET="unix:///var/run/crio/crio.sock"
+        else
+          CRI_SOCKET="unix:///run/containerd/containerd.sock"
+        fi
+        
+        sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --cri-socket="${CRI_SOCKET}"
+        
+        mkdir -p $HOME/.kube
+        sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+        sudo chown $(id -u):$(id -g) $HOME/.kube/config
+        
+        echo "✅ Cluster initialized"
+
+    - name: Install Flannel CNI (kubeadm)
+      if: ${{ inputs.distribution == 'kubeadm' }}
+      shell: bash
+      run: |
+        echo "📦 Installing Flannel CNI..."
+        kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+        
+        kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
+        
+        echo "✅ Flannel installed"
+
+    - name: Install K3s
+      if: ${{ inputs.distribution == 'k3s' }}
+      shell: bash
+      run: |
+        echo "📦 Installing K3s..."
+        curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644 ${{ inputs.extra-params }}
+        
+        echo "⏳ Waiting for K3s to be ready..."
+        sleep 120
+
+    - name: Setup kubectl (K3s)
+      if: ${{ inputs.distribution == 'k3s' }}
+      shell: bash
+      run: |
+        echo "🔧 Setting up kubectl..."
+        
+        ARCH=$(uname -m)
+        case "${ARCH}" in
+          x86_64) ARCH="amd64" ;;
+          aarch64) ARCH="arm64" ;;
+        esac
+        
+        kubectl_version=$(/usr/local/bin/k3s kubectl version --client=true 2>/dev/null | grep "Client Version" | sed -e 's/Client Version: //' -e 's/+k3s[0-9]\+//')
+        sudo curl -fL --progress-bar -o /usr/bin/kubectl https://dl.k8s.io/release/"${kubectl_version}"/bin/linux/"${ARCH}"/kubectl
+        sudo chmod +x /usr/bin/kubectl
+        sudo rm -rf /usr/local/bin/kubectl
+        
+        mkdir -p ~/.kube
+        cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+        
+        echo "✅ kubectl installed: $(kubectl version --client)"
+
+    - name: Install K0s
+      if: ${{ inputs.distribution == 'k0s' }}
+      shell: bash
+      run: |
+        echo "📦 Installing K0s..."
+        curl -sSLf https://get.k0s.sh | sudo sh
+        
+        sudo k0s install controller --single ${{ inputs.extra-params }}
+        
+        sudo mkdir -p /etc/k0s
+        k0s config create | sudo tee /etc/k0s/k0s.yaml
+        sudo sed -i -e "s/metricsPort: 8080/metricsPort: 9999/g" /etc/k0s/k0s.yaml
+        
+        sudo k0s start
+        
+        echo "⏳ Waiting for K0s to be ready..."
+        sleep 120
+
+    - name: Setup kubectl (K0s)
+      if: ${{ inputs.distribution == 'k0s' }}
+      shell: bash
+      run: |
+        echo "🔧 Setting up kubectl..."
+        
+        ARCH=$(uname -m)
+        case "${ARCH}" in
+          x86_64) ARCH="amd64" ;;
+          aarch64) ARCH="arm64" ;;
+        esac
+        
+        kubectl_version=$(sudo k0s kubectl version 2>/dev/null | grep "Client Version" | sed -e 's/Client Version: //')
+        sudo curl -fL --progress-bar -o /usr/bin/kubectl https://dl.k8s.io/release/"${kubectl_version}"/bin/linux/"${ARCH}"/kubectl
+        sudo chmod +x /usr/bin/kubectl
+        
+        mkdir -p ~/.kube
+        sudo cp /var/lib/k0s/pki/admin.conf ~/.kube/config
+        sudo chown "${USER}":"${USER}" ~/.kube/config
+        
+        echo "✅ kubectl installed: $(kubectl version --client)"
+
+    - name: Install RKE2
+      if: ${{ inputs.distribution == 'rke2' }}
+      shell: bash
+      run: |
+        echo "📦 Installing RKE2..."
+        curl -sfL https://get.rke2.io | sudo sh -
+        
+        sudo systemctl enable --now rke2-server.service
+        
+        echo "⏳ Waiting for RKE2 to be ready..."
+        sleep 120
+
+    - name: Setup kubectl (RKE2)
+      if: ${{ inputs.distribution == 'rke2' }}
+      shell: bash
+      run: |
+        echo "🔧 Setting up kubectl..."
+        
+        sudo ln -sf /var/lib/rancher/rke2/bin/kubectl /usr/local/bin/kubectl
+        
+        mkdir -p ~/.kube
+        sudo cp /etc/rancher/rke2/rke2.yaml ~/.kube/config
+        sudo chown "${USER}":"${USER}" ~/.kube/config
+        
+        echo "✅ kubectl installed: $(kubectl version --client)"
+
+    - name: Install MicroK8s
+      if: ${{ inputs.distribution == 'microk8s' }}
+      shell: bash
+      run: |
+        echo "📦 Installing MicroK8s (latest from stable channel)..."
+        sudo snap install microk8s --classic --channel=latest/stable
+        sudo usermod -a -G microk8s "${USER}"
+        
+        MICROK8S_VERSION=$(sudo microk8s version | head -1)
+        echo "ℹ️  Installed MicroK8s: ${MICROK8S_VERSION}"
+        
+        mkdir -p ~/.kube
+        sudo microk8s kubectl config view --raw > ~/.kube/config
+        sudo chown "${USER}":"${USER}" ~/.kube/config
+        
+        echo "⏳ Waiting for MicroK8s to be ready..."
+        sudo microk8s status --wait-ready --timeout 300
+
+    - name: Setup kubectl (MicroK8s)
+      if: ${{ inputs.distribution == 'microk8s' }}
+      shell: bash
+      run: |
+        echo "🔧 Setting up kubectl..."
+        
+        ARCH=$(uname -m)
+        case "${ARCH}" in
+          x86_64) ARCH="amd64" ;;
+          aarch64) ARCH="arm64" ;;
+        esac
+        
+        kubectl_version=$(sudo microk8s version | grep -oe 'v[0-9]\+\(\.[0-9]\+\)*')
+        sudo curl -fL --progress-bar -o /usr/bin/kubectl https://dl.k8s.io/release/"${kubectl_version}"/bin/linux/"${ARCH}"/kubectl
+        sudo chmod +x /usr/bin/kubectl
+        sudo rm -rf /usr/local/bin/kubectl
+        
+        echo "✅ kubectl installed: $(kubectl version --client)"
+
+    - name: Verify cluster
+      shell: bash
+      run: |
+        DIST="${{ inputs.distribution }}"
+        echo "🔍 Verifying ${DIST} cluster..."
+        kubectl get nodes
+        kubectl get pods -A
+        
+        echo "⏳ Waiting for system pods..."
+        kubectl wait --for=condition=Ready pods --all -n kube-system --timeout=10m \
+          --field-selector=status.phase!=Succeeded,status.phase!=Failed || true
+        
+        NOT_READY=$(kubectl get pods -n kube-system -o json | \
+          jq -r '.items[] | select(.status.phase != "Running" and .status.phase != "Succeeded") | .metadata.name')
+        
+        if [ -n "$NOT_READY" ]; then
+          echo "❌ Some pods are not ready:"
+          echo "$NOT_READY"
+          kubectl get pods -A
+          exit 1
+        fi
+        
+        echo "✅ ${DIST} cluster is ready!"
+        
+        # Show container runtime version
+        if command -v containerd >/dev/null; then
+          echo "containerd version: $(containerd --version)"
+        fi
+        if command -v crio >/dev/null; then
+          echo "crio version: $(crio --version)"
+        fi

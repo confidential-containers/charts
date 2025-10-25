@@ -225,40 +225,50 @@ jobs:
 
       - name: Setup Kubernetes cluster (k3s)
         if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'k3s'
-        uses: ./.github/actions/setup-k8s-k3s
+        uses: ./.github/actions/setup-k8s
+        with:
+          distribution: k3s
       
       - name: Setup Kubernetes cluster (k0s)
         if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'k0s'
-        uses: ./.github/actions/setup-k8s-k0s
+        uses: ./.github/actions/setup-k8s
+        with:
+          distribution: k0s
       
       - name: Setup Kubernetes cluster (rke2)
         if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'rke2'
-        uses: ./.github/actions/setup-k8s-rke2
+        uses: ./.github/actions/setup-k8s
+        with:
+          distribution: rke2
       
       - name: Setup Kubernetes cluster (microk8s)
         if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'microk8s'
-        uses: ./.github/actions/setup-k8s-microk8s
+        uses: ./.github/actions/setup-k8s
+        with:
+          distribution: microk8s
       
       - name: Setup Kubernetes cluster (kubeadm with containerd latest)
         if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'kubeadm-containerd-latest'
-        uses: ./.github/actions/setup-k8s-kubeadm
+        uses: ./.github/actions/setup-k8s
         with:
+          distribution: kubeadm
           container-runtime: containerd
           runtime-version: latest
       
       - name: Setup Kubernetes cluster (kubeadm with containerd 1.7)
         if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'kubeadm-containerd-1.7'
-        uses: ./.github/actions/setup-k8s-kubeadm
+        uses: ./.github/actions/setup-k8s
         with:
+          distribution: kubeadm
           container-runtime: containerd
           runtime-version: "1.7"
       
       - name: Setup Kubernetes cluster (kubeadm with CRI-O)
         if: steps.should-run.outputs.should-run == 'true' && matrix.k8s-distro == 'kubeadm-crio'
-        uses: ./.github/actions/setup-k8s-kubeadm
+        uses: ./.github/actions/setup-k8s
         with:
+          distribution: kubeadm
           container-runtime: crio
-          runtime-version: latest
 
       - name: Determine k8s distribution name
         if: steps.should-run.outputs.should-run == 'true'
