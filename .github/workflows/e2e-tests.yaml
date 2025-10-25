@@ -83,7 +83,6 @@ jobs:
     name: E2E (${{ matrix.deployment-type }} / ${{ matrix.k8s-distro }}${{ matrix.image-pull-mode && format(' / {0}', matrix.image-pull-mode) || '' }}${{ matrix.test-containerd-upgrade && ' / containerd-upgrade' || '' }})
     runs-on: ubuntu-24.04
     needs: check-changes
-    if: needs.check-changes.outputs.templates-changed == 'true' || needs.check-changes.outputs.kata-deploy-version-changed == 'true'
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -206,11 +205,11 @@ jobs:
       - name: Check if this matrix entry should run
         id: should-run
         run: |
-          # CI tests run only when templates changed
+          # CI tests should ALWAYS run
           # Standard tests run only when kata-deploy version changed
-          if [ "${{ matrix.deployment-type }}" = "ci" ] && [ "${{ needs.check-changes.outputs.templates-changed }}" = "true" ]; then
+          if [ "${{ matrix.deployment-type }}" = "ci" ]; then
             echo "should-run=true" >> $GITHUB_OUTPUT
-            echo "✅ CI test will run (templates changed)"
+            echo "✅ CI test will run"
           elif [ "${{ matrix.deployment-type }}" = "standard" ] && [ "${{ needs.check-changes.outputs.kata-deploy-version-changed }}" = "true" ]; then
             echo "should-run=true" >> $GITHUB_OUTPUT
             echo "✅ Standard test will run (kata-deploy version changed)"
