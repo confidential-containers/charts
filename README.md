@@ -2,6 +2,18 @@
 
 Umbrella Helm chart for Confidential Containers. This chart deploys kata-containers runtime with confidential computing support for TEE technologies.
 
+## Project Status
+
+⚠️ **Early Stage Development** - This Helm chart is in its primary development phase as part of the effort to provide an alternative deployment method for Confidential Containers.
+
+**Goal:** Replace the [Confidential Containers Operator](https://github.com/confidential-containers/operator) as the primary deployment method by the **0.18.0 release**.
+
+**Current Focus:**
+- ✅ Core functionality and E2E testing
+- ✅ Multi k8s distribution support (eg, k0s, k3s, microk8s, kubeadm, rke2 support)
+- 🔄 Feature parity with Operator
+- 📋 See [Test Coverage & Roadmap](#test-coverage--roadmap) below for detailed progress
+
 ## Overview
 
 This chart includes:
@@ -347,6 +359,28 @@ See [`scripts/README.md`](scripts/README.md) for detailed documentation.
 ## Contributing
 
 See the [Confidential Containers contributing guide](https://github.com/confidential-containers/documentation/blob/main/CONTRIBUTING.md).
+
+## Test Coverage & Roadmap
+
+### Helm Chart Testing (Current Implementation)
+
+**Framework:** GitHub Actions (YAML-based workflows)
+
+| Aspect | Coverage | Details |
+|--------|----------|---------|
+| **Kubernetes Distributions** | ✅ | k3s, k0s, rke2, microk8s, kubeadm |
+| **Container Runtimes** | ⚠️ | containerd, CRI-O tests are not yet ready |
+| **Deployment Types** | ✅ | Standard (CoCo releases), CI (Kata Containers latest) |
+| **Image Pull Modes** | ✅ | nydus-snapshotter, experimental-force-guest-pull |
+| **Special Tests** | ✅ | Custom containerd |
+| **Peer-pods** | ❌ | Not yet supported |
+
+### Roadmap to 0.18.0
+
+- ✅ **Phase 1** (Current) - Comprehensive E2E test coverage, unified actions
+- 🔄 **Phase 2** - Feature parity verification, edge case testing, peer-pods support
+- 📋 **Phase 3** - Operator deprecation notice, migration guide
+- 📋 **Phase 4 (0.18.0)** - Operator replacement as primary method
 
 ## License
 
