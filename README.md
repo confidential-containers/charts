@@ -396,7 +396,7 @@ See the [Confidential Containers contributing guide](https://github.com/confiden
 | Aspect | Coverage | Details |
 |--------|----------|---------|
 | **Kubernetes Distributions** | ✅ | k3s, k0s, rke2, microk8s, kubeadm |
-| **Container Runtimes** | ⚠️ | containerd, CRI-O tests are not yet ready |
+| **Container Runtimes** | ✅ | containerd, CRI-O |
 | **Deployment Types** | ✅ | Standard (CoCo releases), CI (Kata Containers latest) |
 | **Image Pull Modes** | ✅ | nydus-snapshotter, experimental-force-guest-pull |
 | **Special Tests** | ✅ | Custom containerd |
