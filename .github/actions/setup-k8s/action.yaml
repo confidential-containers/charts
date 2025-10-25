@@ -454,12 +454,13 @@ runs:
         kubectl get nodes
         kubectl get pods -A
         
-        echo "⏳ Waiting for system pods..."
-        kubectl wait --for=condition=Ready pods --all -n kube-system --timeout=10m \
-          --field-selector=status.phase!=Succeeded,status.phase!=Failed || true
+        echo "⏳ Waiting for all system pods to be ready..."
+        kubectl wait --for=condition=Ready pods --all --all-namespaces --timeout=10m \
+          --field-selector=status.phase!=Succeeded,status.phase!=Failed
         
-        NOT_READY=$(kubectl get pods -n kube-system -o json | \
-          jq -r '.items[] | select(.status.phase != "Running" and .status.phase != "Succeeded") | .metadata.name')
+        echo "🔍 Checking for any non-ready pods..."
+        NOT_READY=$(kubectl get pods -A -o json | \
+          jq -r '.items[] | select(.status.phase != "Running" and .status.phase != "Succeeded") | "\(.metadata.namespace)/\(.metadata.name)"')
         
         if [ -n "$NOT_READY" ]; then
           echo "❌ Some pods are not ready:"
