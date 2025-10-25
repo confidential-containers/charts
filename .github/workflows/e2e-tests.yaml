@@ -80,7 +80,7 @@ jobs:
           fi
 
   e2e-tests:
-    name: E2E (${{ matrix.deployment-type }} / ${{ matrix.k8s-distro }}${{ matrix.image-pull-mode && format(' / {0}', matrix.image-pull-mode) || '' }})
+    name: E2E (${{ matrix.deployment-type }} / ${{ matrix.k8s-distro }}${{ matrix.image-pull-mode && format(' / {0}', matrix.image-pull-mode) || '' }}${{ matrix.test-containerd-upgrade && ' / containerd-upgrade' || '' }})
     runs-on: ubuntu-24.04
     needs: check-changes
     if: needs.check-changes.outputs.templates-changed == 'true' || needs.check-changes.outputs.kata-deploy-version-changed == 'true'
@@ -131,6 +131,15 @@ jobs:
           - deployment-type: ci
             k8s-distro: kubeadm-containerd-1.7
             image-pull-mode: experimental-force-guest-pull
+          # Containerd Upgrade Test - CI Variant - Kubeadm with containerd 1.7 upgraded to 2.0
+          - deployment-type: ci
+            k8s-distro: kubeadm-containerd-1.7
+            image-pull-mode: nydus
+            test-containerd-upgrade: true
+          - deployment-type: ci
+            k8s-distro: kubeadm-containerd-1.7
+            image-pull-mode: experimental-force-guest-pull
+            test-containerd-upgrade: true
           ## CI Variant - Kubeadm with CRI-O
           #- deployment-type: ci
           #  k8s-distro: kubeadm-crio
@@ -177,6 +186,15 @@ jobs:
           - deployment-type: standard
             k8s-distro: kubeadm-containerd-1.7
             image-pull-mode: experimental-force-guest-pull
+          # Containerd Upgrade Test - Standard Deployment - Kubeadm with containerd 1.7 upgraded to 2.0
+          - deployment-type: standard
+            k8s-distro: kubeadm-containerd-1.7
+            image-pull-mode: nydus
+            test-containerd-upgrade: true
+          - deployment-type: standard
+            k8s-distro: kubeadm-containerd-1.7
+            image-pull-mode: experimental-force-guest-pull
+            test-containerd-upgrade: true
           ## Standard Deployment - Kubeadm with CRI-O
           #- deployment-type: standard
           #  k8s-distro: kubeadm-crio
@@ -270,6 +288,15 @@ jobs:
           helm dependency update
           echo "✅ Dependencies updated"
 
+      - name: Get original containerd version
+        if: steps.should-run.outputs.should-run == 'true' && matrix.test-containerd-upgrade
+        id: original-containerd-version
+        run: |
+          echo "🔍 Checking original containerd version..."
+          ORIGINAL_VERSION=$(containerd --version | awk '{print $3}')
+          echo "Original containerd version: ${ORIGINAL_VERSION}"
+          echo "version=${ORIGINAL_VERSION}" >> $GITHUB_OUTPUT
+
       - name: Prepare Helm extra args
         if: steps.should-run.outputs.should-run == 'true'
         id: helm-args
@@ -289,6 +316,11 @@ jobs:
           # Add image pull mode specific flags (only for CI, standard uses defaults)
           if [ "${{ matrix.deployment-type }}" = "ci" ] && [ "${{ matrix.image-pull-mode }}" = "experimental-force-guest-pull" ]; then
             ARGS="${ARGS} --set ${CHART_VARIANT}.env.snapshotterHandlerMapping='' --set ${CHART_VARIANT}.env.pullTypeMapping=\"\" --set ${CHART_VARIANT}.env._experimentalSetupSnapshotter=\"\" --set ${CHART_VARIANT}.env._experimentalForceGuestPull=qemu-coco-dev"
+          fi
+          
+          # Add containerd upgrade flags (only for containerd upgrade test)
+          if [ "${{ matrix.test-containerd-upgrade }}" == "true" ]; then
+            ARGS="${ARGS} --set customContainerd.enabled=true --set customContainerd.tarballUrl=https://github.com/containerd/containerd/releases/download/v2.0.0/containerd-2.0.0-linux-amd64.tar.gz"
           fi
           
           echo "args=${ARGS}" >> $GITHUB_OUTPUT
@@ -326,6 +358,53 @@ jobs:
           expected-runtime-classes: ${{ steps.deployment-params.outputs.expected-runtimeclasses }}
           daemonset-timeout: 15m
           daemonset-label: ${{ steps.deployment-params.outputs.daemonset-label }}
+
+      - name: Get new containerd version
+        if: steps.should-run.outputs.should-run == 'true' && matrix.test-containerd-upgrade
+        id: new-containerd-version
+        run: |
+          echo "🔍 Checking new containerd version..."
+          
+          # Retry getting containerd version (might not be immediately available after restart)
+          TIMEOUT=30
+          ELAPSED=0
+          NEW_VERSION=""
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            NEW_VERSION=$(containerd --version 2>/dev/null | awk '{print $3}' || echo "")
+            if [ -n "$NEW_VERSION" ]; then
+              echo "✅ Got containerd version after ${ELAPSED}s"
+              break
+            fi
+            sleep 3
+            ELAPSED=$((ELAPSED + 3))
+          done
+          
+          if [ -z "$NEW_VERSION" ]; then
+            echo "❌ Failed to get containerd version after ${TIMEOUT}s"
+            exit 1
+          fi
+          
+          echo "New containerd version: ${NEW_VERSION}"
+          echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Compare containerd versions
+        if: steps.should-run.outputs.should-run == 'true' && matrix.test-containerd-upgrade
+        run: |
+          echo "📊 Comparing containerd versions..."
+          echo ""
+          echo "Original version: ${{ steps.original-containerd-version.outputs.version }}"
+          echo "New version:      ${{ steps.new-containerd-version.outputs.version }}"
+          echo ""
+          
+          if [ "${{ steps.original-containerd-version.outputs.version }}" = "${{ steps.new-containerd-version.outputs.version }}" ]; then
+            echo "❌ Containerd version did not change!"
+            echo "Expected upgrade from ${{ steps.original-containerd-version.outputs.version }} to a different version"
+            exit 1
+          fi
+          
+          echo "✅ Containerd version successfully upgraded!"
+          echo "   From: ${{ steps.original-containerd-version.outputs.version }}"
+          echo "   To:   ${{ steps.new-containerd-version.outputs.version }}"
 
       - name: Run test pod
         if: steps.should-run.outputs.should-run == 'true'
@@ -430,6 +509,12 @@ jobs:
           echo "=== kata-deploy logs ==="
           kubectl logs -n kube-system -l ${{ steps.deployment-params.outputs.daemonset-label }} --tail=200 --prefix=true || echo "No logs available"
           
+          if [ "${{ matrix.test-containerd-upgrade }}" == "true" ]; then
+            echo ""
+            echo "=== containerd-installer logs ==="
+            kubectl logs -n kube-system -l app.kubernetes.io/component=containerd-installer --tail=200 --prefix=true || echo "No logs available"
+          fi
+          
           echo ""
           echo "=== Events ==="
           kubectl get events -A --sort-by='.lastTimestamp' | tail -50
@@ -448,12 +533,155 @@ jobs:
           echo "🗑️  Uninstalling chart: ${RELEASE_NAME}..."
           helm uninstall ${RELEASE_NAME} -n kube-system --wait --timeout 5m || true
           
+          # For containerd upgrade tests, verify rollback
+          if [ "${{ matrix.test-containerd-upgrade }}" == "true" ]; then
+            echo ""
+            echo "⏳ Waiting for post-delete cleanup job..."
+            
+            # Wait for the cleanup job to appear with retry
+            TIMEOUT=30
+            ELAPSED=0
+            CLEANUP_JOB=""
+            while [ $ELAPSED -lt $TIMEOUT ]; do
+              CLEANUP_JOB=$(kubectl get jobs -n kube-system -l app.kubernetes.io/component=containerd-cleanup -o name 2>/dev/null | head -1 || echo "")
+              if [ -n "${CLEANUP_JOB}" ]; then
+                echo "✅ Found cleanup job after ${ELAPSED}s: ${CLEANUP_JOB}"
+                break
+              fi
+              sleep 3
+              ELAPSED=$((ELAPSED + 3))
+            done
+            
+            if [ -n "${CLEANUP_JOB}" ]; then
+              # Wait for the cleanup job to complete
+              if kubectl wait --for=condition=complete --timeout=120s "${CLEANUP_JOB}" -n kube-system 2>/dev/null; then
+                echo "✅ Cleanup job completed successfully"
+                echo "📋 Cleanup job logs:"
+                kubectl logs -n kube-system "${CLEANUP_JOB}" --tail=50 || true
+              else
+                echo "⚠️  Cleanup job did not complete within timeout"
+                kubectl describe "${CLEANUP_JOB}" -n kube-system || true
+                kubectl logs -n kube-system "${CLEANUP_JOB}" --tail=100 || true
+              fi
+            else
+              echo "⚠️  No cleanup job found after ${TIMEOUT}s"
+            fi
+            
+            echo ""
+            echo "🔍 Checking if containerd was rolled back..."
+            
+            # Retry getting containerd version after rollback
+            TIMEOUT=60
+            ELAPSED=0
+            AFTER_UNINSTALL_VERSION=""
+            while [ $ELAPSED -lt $TIMEOUT ]; do
+              AFTER_UNINSTALL_VERSION=$(containerd --version 2>/dev/null | awk '{print $3}' || echo "")
+              if [ -n "$AFTER_UNINSTALL_VERSION" ]; then
+                echo "✅ Got containerd version after ${ELAPSED}s"
+                break
+              fi
+              sleep 3
+              ELAPSED=$((ELAPSED + 3))
+            done
+            
+            if [ -z "$AFTER_UNINSTALL_VERSION" ]; then
+              echo "❌ Failed to get containerd version after rollback"
+              exit 1
+            fi
+            
+            echo "Containerd version after uninstall: ${AFTER_UNINSTALL_VERSION}"
+            
+            echo ""
+            echo "📊 Rollback verification:"
+            echo "   Original version:        ${{ steps.original-containerd-version.outputs.version }}"
+            echo "   Upgraded version:        ${{ steps.new-containerd-version.outputs.version }}"
+            echo "   After uninstall version: ${AFTER_UNINSTALL_VERSION}"
+            echo ""
+            
+            if [ "${AFTER_UNINSTALL_VERSION}" = "${{ steps.original-containerd-version.outputs.version }}" ]; then
+              echo "✅ Rollback successful! Containerd restored to original version"
+            else
+              echo "❌ Rollback failed or incomplete!"
+              echo "   Expected: ${{ steps.original-containerd-version.outputs.version }}"
+              echo "   Got:      ${AFTER_UNINSTALL_VERSION}"
+              echo ""
+              echo "Checking for cleanup job status:"
+              kubectl get jobs -n kube-system -l app.kubernetes.io/component=containerd-cleanup || true
+              echo ""
+              echo "Checking for cleanup job logs:"
+              kubectl logs -n kube-system -l app.kubernetes.io/component=containerd-cleanup --tail=100 || true
+              exit 1
+            fi
+          fi
+          
+          echo ""
           echo "🔍 Verifying cleanup..."
           echo "Remaining pods:"
           kubectl get pods -n kube-system -l app.kubernetes.io/instance=${RELEASE_NAME} || echo "No pods found"
           
+          echo ""
           echo "Remaining RuntimeClasses:"
           kubectl get runtimeclass || echo "No RuntimeClasses found"
+          
+          if [ "${{ matrix.test-containerd-upgrade }}" == "true" ]; then
+            echo ""
+            echo "Remaining cleanup jobs:"
+            kubectl get jobs -n kube-system -l app.kubernetes.io/component=containerd-cleanup || echo "No cleanup jobs found"
+          fi
+
+      - name: Test normal pod after cleanup
+        if: always() && matrix.test-containerd-upgrade == 'true'
+        run: |
+          echo "🧪 Testing normal pod creation after cleanup..."
+          echo "This ensures containerd still works for regular (non-Kata) workloads"
+          
+          # Create a simple test pod
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: normal-test-pod
+            namespace: default
+          spec:
+            containers:
+            - name: test
+              image: quay.io/quay/busybox:latest
+              command: ['sh', '-c', 'echo "Hello from normal pod!" && sleep 10']
+            restartPolicy: Never
+          EOF
+          
+          # Wait for pod to start with retry
+          echo "⏳ Waiting for pod to start..."
+          TIMEOUT=60
+          ELAPSED=0
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            POD_PHASE=$(kubectl get pod normal-test-pod -n default -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+            
+            if [ "$POD_PHASE" = "Running" ] || [ "$POD_PHASE" = "Succeeded" ]; then
+              echo "✅ Normal pod started successfully after ${ELAPSED}s!"
+              kubectl get pod normal-test-pod -n default
+              kubectl logs normal-test-pod -n default || true
+              break
+            elif [ "$POD_PHASE" = "Failed" ]; then
+              echo "❌ Normal pod failed to start!"
+              kubectl describe pod normal-test-pod -n default
+              exit 1
+            fi
+            
+            sleep 3
+            ELAPSED=$((ELAPSED + 3))
+          done
+          
+          if [ "$POD_PHASE" != "Running" ] && [ "$POD_PHASE" != "Succeeded" ]; then
+            echo "❌ Timeout: Normal pod did not start"
+            kubectl describe pod normal-test-pod -n default
+            exit 1
+          fi
+          
+          # Cleanup
+          kubectl delete pod normal-test-pod -n default --ignore-not-found=true
+          
+          echo "✅ Cleanup verification complete - normal pods work correctly!"
 
 
   test-summary:
@@ -468,7 +696,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [ "${{ needs.e2e-tests.result }}" = "success" ]; then
-            echo "✅ E2E Tests (CI + Standard): **PASSED**" >> $GITHUB_STEP_SUMMARY
+            echo "✅ E2E Tests (CI + Standard + Containerd Upgrade): **PASSED**" >> $GITHUB_STEP_SUMMARY
           elif [ "${{ needs.e2e-tests.result }}" = "skipped" ]; then
             echo "⏭️ E2E Tests: **SKIPPED** (no changes triggering tests)" >> $GITHUB_STEP_SUMMARY
           else
@@ -495,6 +723,7 @@ jobs:
           #echo "- ✅ Image pulling with CRI-O" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ CI variant (kata-containers-latest)" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Standard deployment (CoCo releases)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Containerd upgrade and rollback" >> $GITHUB_STEP_SUMMARY
 
       - name: Check overall tests status
         run: |
