@@ -1,0 +1,245 @@
+name: Release Helm Chart
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Release Helm Chart
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Read and validate versions from Chart.yaml
+        id: read_version
+        run: |
+          VERSION="$(yq '.version' Chart.yaml)"
+          APP_VERSION="$(yq '.appVersion' Chart.yaml)"
+          
+          # Check version exists
+          if [ -z "${VERSION}" ] || [ "${VERSION}" = "null" ]; then
+            echo "❌ Failed to read version from Chart.yaml"
+            exit 1
+          fi
+          
+          # Check appVersion exists
+          if [ -z "${APP_VERSION}" ] || [ "${APP_VERSION}" = "null" ]; then
+            echo "❌ Failed to read appVersion from Chart.yaml"
+            exit 1
+          fi
+          
+          # Ensure version and appVersion are in sync
+          if [ "${VERSION}" != "${APP_VERSION}" ]; then
+            echo "❌ version and appVersion in Chart.yaml must be in sync!"
+            echo "   version:    ${VERSION}"
+            echo "   appVersion: ${APP_VERSION}"
+            echo ""
+            echo "Please update Chart.yaml to have matching version and appVersion:"
+            echo "  yq -i '.appVersion = .version' Chart.yaml"
+            exit 1
+          fi
+          
+          # Validate version format
+          if ! [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "❌ Invalid version format: ${VERSION}"
+            echo "Expected format: X.Y.Z or X.Y.Z-suffix (e.g., 1.0.0 or 1.0.0-rc.1)"
+            exit 1
+          fi
+          
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "✅ Version from Chart.yaml: ${VERSION}"
+          echo "✅ appVersion matches version: ${APP_VERSION}"
+          echo "✅ Version format is valid"
+      
+      - name: Check if tag already exists
+        run: |
+          VERSION="${{ steps.read_version.outputs.version }}"
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            echo "❌ Tag v${VERSION} already exists"
+            exit 1
+          fi
+          echo "✅ Tag v${VERSION} does not exist yet"
+      
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
+      
+      - name: Update Helm dependencies
+        run: |
+          helm dependency update
+          echo "✅ Helm dependencies updated"
+      
+      - name: Package Helm chart
+        run: |
+          helm package . --destination .cr-release-packages
+          echo "✅ Helm chart packaged"
+          ls -lh .cr-release-packages/
+      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Push Helm chart to GHCR
+        run: |
+          VERSION="${{ steps.read_version.outputs.version }}"
+          CHART_PACKAGE="$(ls .cr-release-packages/confidential-containers-${VERSION}.tgz)"
+          
+          # Push to GHCR using Helm's OCI support
+          helm push "${CHART_PACKAGE}" oci://ghcr.io/${{ github.repository_owner }}/charts
+          
+          echo "✅ Helm chart pushed to ghcr.io/${{ github.repository_owner }}/charts/confidential-containers:${VERSION}"
+      
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.read_version.outputs.version }}"
+          
+          # Get the previous tag
+          PREVIOUS_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "")"
+          
+          cat > release-notes.md <<EOF
+          # Confidential Containers Helm Chart v${VERSION}
+          
+          ## Installation
+          
+          ### From OCI Registry (Recommended)
+          
+          \`\`\`bash
+          # x86_64 (Intel/AMD)
+          helm install coco oci://ghcr.io/${{ github.repository_owner }}/charts/confidential-containers \\
+            --version ${VERSION} \\
+            --namespace kube-system
+          
+          # s390x (IBM Z)
+          helm install coco oci://ghcr.io/${{ github.repository_owner }}/charts/confidential-containers \\
+            --version ${VERSION} \\
+            -f https://raw.githubusercontent.com/${{ github.repository }}/v${VERSION}/values/kata-s390x.yaml \\
+            --namespace kube-system
+          
+          # aarch64 (ARM64)
+          helm install coco oci://ghcr.io/${{ github.repository_owner }}/charts/confidential-containers \\
+            --version ${VERSION} \\
+            -f https://raw.githubusercontent.com/${{ github.repository }}/v${VERSION}/values/kata-aarch64.yaml \\
+            --namespace kube-system
+          
+          # peer-pods (remote)
+          helm install coco oci://ghcr.io/${{ github.repository_owner }}/charts/confidential-containers \\
+            --version ${VERSION} \\
+            -f https://raw.githubusercontent.com/${{ github.repository }}/v${VERSION}/values/kata-remote.yaml \\
+            --namespace kube-system
+          \`\`\`
+          
+          ## What's Included
+          
+          - **Chart Version**: ${VERSION}
+          - **App Version**: ${VERSION}
+          - **kata-deploy Version**: $(yq '.dependencies[] | select(.name == "kata-deploy") | .version' Chart.yaml | head -1)
+          
+          ## Supported Architectures
+          
+          - x86_64 (Intel/AMD with SNP, TDX, NVIDIA GPU support)
+          - s390x (IBM Z with Secure Execution)
+          - aarch64 (ARM64)
+          - peer-pods (Cloud API Adaptor integration)
+          
+          ## Documentation
+          
+          - [Quick Start Guide](https://github.com/${{ github.repository }}/blob/v${VERSION}/QUICKSTART.md)
+          - [Full Documentation](https://github.com/${{ github.repository }}/blob/v${VERSION}/README.md)
+          
+          EOF
+          
+          if [ -n "${PREVIOUS_TAG}" ]; then
+            echo "## Changes Since ${PREVIOUS_TAG}" >> release-notes.md
+            echo "" >> release-notes.md
+            git log --pretty=format:"- %s (%h)" "${PREVIOUS_TAG}..HEAD" >> release-notes.md
+          fi
+          
+          cat release-notes.md
+          echo "release_notes_file=release-notes.md" >> "${GITHUB_OUTPUT}"
+      
+      - name: Commit Chart.lock if changed
+        run: |
+          VERSION="${{ steps.read_version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Only commit if Chart.lock has changed
+          if git diff --quiet Chart.lock; then
+            echo "ℹ️  Chart.lock unchanged, nothing to commit"
+          else
+            git add Chart.lock
+            git commit -m "Release v${VERSION}: Update Chart.lock"
+            echo "✅ Committed Chart.lock changes"
+          fi
+      
+      - name: Create and push tag
+        run: |
+          VERSION="${{ steps.read_version.outputs.version }}"
+          git tag -a "v${VERSION}" -m "Release v${VERSION}"
+          git push origin "v${VERSION}"
+          
+          echo "✅ Created and pushed tag v${VERSION}"
+      
+      - name: Push changes if any
+        run: |
+          # Only push if there are commits to push
+          if git diff --quiet origin/${{ github.ref_name }}..HEAD; then
+            echo "ℹ️  No changes to push"
+          else
+            git push origin HEAD:${{ github.ref_name }}
+            echo "✅ Pushed changes to ${{ github.ref_name }}"
+          fi
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.read_version.outputs.version }}
+          name: v${{ steps.read_version.outputs.version }}
+          body_path: release-notes.md
+          files: .cr-release-packages/*.tgz
+          prerelease: false
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Release Summary
+        run: |
+          VERSION="${{ steps.read_version.outputs.version }}"
+          cat << EOF
+          
+          ╔══════════════════════════════════════════════════════════════════════════════╗
+          ║                    RELEASE COMPLETED SUCCESSFULLY! 🎉                        ║
+          ╚══════════════════════════════════════════════════════════════════════════════╝
+          
+          📦 Release Version: v${VERSION}
+          🏷️  Git Tag: v${VERSION}
+          📝 GitHub Release: https://github.com/${{ github.repository }}/releases/tag/v${VERSION}
+          
+          📥 OCI Registry:
+             ghcr.io/${{ github.repository_owner }}/charts/confidential-containers:${VERSION}
+          
+          🚀 Installation Command:
+             helm install coco oci://ghcr.io/${{ github.repository_owner }}/charts/confidential-containers \\
+               --version ${VERSION} \\
+               --namespace kube-system
+          
+          ✅ Chart package available as release artifact
+          ✅ Chart pushed to GitHub Container Registry
+          ✅ Release notes generated
+          ✅ Git tag created and pushed
+          
+          EOF
+

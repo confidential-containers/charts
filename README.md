@@ -335,6 +335,34 @@ helm uninstall coco --namespace kube-system
 
 The uninstall command is the same regardless of whether you installed from the OCI registry or locally.
 
+## Release Process
+
+### For Maintainers
+
+To prepare a new release, use the automated release preparation script:
+
+```bash
+# Bump patch version (0.16.0 → 0.16.1)
+./scripts/prepare-release.sh
+
+# Bump minor version (0.16.0 → 0.17.0)
+./scripts/prepare-release.sh minor
+
+# Bump major version (0.16.0 → 1.0.0)
+./scripts/prepare-release.sh major
+```
+
+This script will:
+1. Fetch the latest kata-containers release
+2. Update Chart.yaml versions
+3. Update Helm dependencies
+4. Create a new branch and commit
+5. Open a pull request
+
+After the PR is merged, trigger the release workflow via GitHub Actions.
+
+See [`scripts/README.md`](scripts/README.md) for detailed documentation.
+
 ## Contributing
 
 See the [Confidential Containers contributing guide](https://github.com/confidential-containers/documentation/blob/main/CONTRIBUTING.md).

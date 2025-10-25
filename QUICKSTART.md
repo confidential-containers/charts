@@ -67,39 +67,28 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 If you're developing or customizing the chart:
 
 ```bash
-
 # Clone the repository
-
 git clone https://github.com/confidential-containers/charts.git
 cd charts
 
-# Update dependencies
-
-helm dependencies update
+# Update dependencies (automatically cleans Chart.lock)
+./scripts/update-dependencies.sh
 
 # Install for your architecture
-
 helm install coco . --namespace kube-system  # x86_64
-
 # OR
-
 helm install coco . -f values/kata-s390x.yaml --namespace kube-system  # s390x
-
 # OR
-
 helm install coco . -f values/kata-aarch64.yaml --namespace kube-system  # aarch64
 ```
 
 ## Verify Installation
 
 ```bash
-
 # Check the daemonset is running
-
 kubectl get daemonset -n kube-system
 
 # List available RuntimeClasses
-
 kubectl get runtimeclass
 ```
 
