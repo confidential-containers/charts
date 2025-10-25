@@ -193,6 +193,76 @@ These inherit from kata-deploy defaults but can be overridden:
 
 **See [QUICKSTART.md](QUICKSTART.md) for complete customization examples and usage.**
 
+### Custom Containerd Installation (Optional)
+
+The chart supports installing a custom containerd binary from a tarball before deploying the runtime. This is useful for:
+- Testing custom containerd builds
+- Using specific containerd versions not available in distribution repos
+- Development and CI/CD workflows
+
+|| Parameter | Description | Default |
+||-----------|-------------|---------|
+|| `customContainerd.enabled` | Enable custom containerd installation | `false` |
+|| `customContainerd.tarballUrl` | URL to containerd tarball (single-arch clusters) | `""` |
+|| `customContainerd.tarballUrls.amd64` | URL for amd64/x86_64 tarball (multi-arch clusters) | `""` |
+|| `customContainerd.tarballUrls.arm64` | URL for arm64/aarch64 tarball (multi-arch clusters) | `""` |
+|| `customContainerd.tarballUrls.s390x` | URL for s390x tarball (multi-arch clusters) | `""` |
+|| `customContainerd.tarballUrls.ppc64le` | URL for ppc64le tarball (multi-arch clusters) | `""` |
+|| `customContainerd.installPath` | Installation path on host | `/usr/local` |
+|| `customContainerd.image.repository` | Installer image (needs wget, tar, sh) | `docker.io/library/alpine` |
+|| `customContainerd.image.tag` | Installer image tag | `3.22` |
+|| `customContainerd.nodeSelector` | Node selector for installer | `{}` |
+|| `customContainerd.tolerations` | Tolerations for installer | `[{operator: Exists}]` |
+
+**Example (Single-Architecture Cluster):**
+```bash
+# Install with custom containerd for x86_64
+helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
+  --set customContainerd.enabled=true \
+  --set customContainerd.tarballUrl=https://example.com/containerd-1.7.0-linux-amd64.tar.gz \
+  --namespace kube-system
+
+# Install with custom containerd for s390x
+helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
+  -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-s390x.yaml \
+  --set customContainerd.enabled=true \
+  --set customContainerd.tarballUrl=https://example.com/containerd-1.7.0-linux-s390x.tar.gz \
+  --namespace kube-system
+```
+
+**Example (Multi-Architecture/Heterogeneous Cluster):**
+```bash
+# Install with custom containerd for mixed x86_64 and aarch64 cluster
+helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
+  --set customContainerd.enabled=true \
+  --set customContainerd.tarballUrls.amd64=https://example.com/containerd-1.7.0-linux-amd64.tar.gz \
+  --set customContainerd.tarballUrls.arm64=https://example.com/containerd-1.7.0-linux-arm64.tar.gz \
+  --namespace kube-system
+
+# Or using a custom values file
+cat <<EOF > custom-containerd.yaml
+customContainerd:
+  enabled: true
+  tarballUrls:
+    amd64: https://example.com/containerd-1.7.0-linux-amd64.tar.gz
+    arm64: https://example.com/containerd-1.7.0-linux-arm64.tar.gz
+    s390x: https://example.com/containerd-1.7.0-linux-s390x.tar.gz
+EOF
+
+helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
+  -f custom-containerd.yaml \
+  --namespace kube-system
+```
+
+**Important Notes:**
+- The tarball should extract to `bin/containerd`, `bin/containerd-shim-runc-v2`, etc.
+- The installer automatically detects node architecture and downloads the appropriate tarball
+- For **single-architecture clusters**, use `tarballUrl`
+- For **heterogeneous/multi-architecture clusters**, use `tarballUrls.<arch>` with architecture-specific URLs
+- The installer runs as a pre-install/pre-upgrade Helm hook with priority `-5` (before runtime installation)
+- The installer DaemonSet uses privileged containers and mounts the host filesystem
+- **Only works with `k8sDistribution: k8s`** (not k3s, rke2, k0s, microk8s - these manage their own containerd)
+
 ## Repository Structure
 
 ```

@@ -8,6 +8,42 @@
 # Architecture label (for NOTES template)
 architecture: "x86_64"
 
+# Custom Containerd Installation (optional)
+# Allows installation of a custom containerd binary from a tarball before runtime deployment.
+# This is useful for testing custom containerd builds or specific versions.
+# Disabled by default.
+#
+# IMPORTANT: Only works with k8sDistribution: k8s (not k3s, rke2, k0s, microk8s).
+#            These distributions manage their own containerd.
+#
+# Example:
+#   helm install coco oci://... \
+#     --set customContainerd.enabled=true \
+#     --set customContainerd.tarballUrl=https://example.com/containerd-1.7.0-linux-amd64.tar.gz
+#
+customContainerd:
+  enabled: false
+  # URL to the containerd tarball
+  # For single-arch clusters, use tarballUrl. For multi-arch, use tarballUrls with arch keys.
+  # The tarball should extract to bin/containerd, bin/containerd-shim-runc-v2, etc.
+  tarballUrl: ""
+  # Multi-arch tarball URLs (takes precedence over tarballUrl if specified)
+  # Supported architectures: amd64, arm64, s390x, ppc64le
+  tarballUrls:
+    amd64: ""
+    arm64: ""
+    s390x: ""
+  # Image used for the installer Job (should have wget, tar, sh)
+  image:
+    repository: "docker.io/library/alpine"
+    tag: "3.22"
+    pullPolicy: "IfNotPresent"
+  # Node selector for targeting specific nodes
+  nodeSelector: {}
+  # Tolerations for scheduling on tainted nodes
+  tolerations:
+  - operator: Exists
+
 # Common configuration defaults (shared across all architectures)
 _commonConfig: &commonConfig
   imagePullPolicy: Always
