@@ -77,7 +77,7 @@ runs:
         # Wait for system pods to be ready (excluding completed/job pods)
         echo "⏳ Waiting for system pods..."
         # Wait only for Running pods (not Completed/Job pods)
-        kubectl wait --for=condition=Ready pods --all -n kube-system --timeout=5m \
+        kubectl wait --for=condition=Ready pods --all -n kube-system --timeout=10m \
           --field-selector=status.phase!=Succeeded,status.phase!=Failed || true
         
         # Verify all pods are either Running or Completed
