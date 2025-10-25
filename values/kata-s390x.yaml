@@ -14,7 +14,7 @@ _commonConfig: &commonConfig
 _shimsConfig: &s390x_shims
   shims: "qemu-coco-dev qemu-se"
   snapshotterHandlerMapping: "qemu-coco-dev:nydus,qemu-se:nydus"
-  pullTypeMapping: "guest-pull"
+  pullTypeMapping: "qemu-coco-dev:guest-pull,qemu-se:guest-pull"
 
 kata-as-coco-runtime:
   <<: *commonConfig

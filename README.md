@@ -201,7 +201,6 @@ These inherit from kata-deploy defaults but can be overridden:
 | `kata-as-coco-runtime.env.allowedHypervisorAnnotations` | Allowed hypervisor annotations | `""` |
 | `kata-as-coco-runtime.env.agentHttpsProxy` | HTTPS proxy for guest agent | `""` |
 | `kata-as-coco-runtime.env.agentNoProxy` | No proxy settings for guest agent | `""` |
-| `kata-as-coco-runtime.env.pullTypeMapping` | Image pull type mapping | `guest-pull` |
 
 **See [QUICKSTART.md](QUICKSTART.md) for complete customization examples and usage.**
 

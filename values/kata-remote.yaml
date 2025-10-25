@@ -12,7 +12,7 @@ _commonConfig: &commonConfig
 _shimsConfig: &remote_shims
   shims: "remote"
   snapshotterHandlerMapping: "remote:nydus"
-  pullTypeMapping: "guest-pull"
+  pullTypeMapping: "remote:guest-pull"
 
 kata-as-coco-runtime:
   <<: *commonConfig

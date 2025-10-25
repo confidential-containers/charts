@@ -14,7 +14,7 @@ _commonConfig: &commonConfig
 _shimsConfig: &aarch64_shims
   shims: "qemu-coco-dev"
   snapshotterHandlerMapping: "qemu-coco-dev:nydus"
-  pullTypeMapping: "guest-pull"
+  pullTypeMapping: "qemu-coco-dev:guest-pull"
 
 kata-as-coco-runtime:
   <<: *commonConfig
