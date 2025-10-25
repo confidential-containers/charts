@@ -263,25 +263,6 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 - The installer DaemonSet uses privileged containers and mounts the host filesystem
 - **Only works with `k8sDistribution: k8s`** (not k3s, rke2, k0s, microk8s - these manage their own containerd)
 
-## Repository Structure
-
-```
-charts/
-├── Chart.yaml                  # Chart metadata with dependencies
-├── values.yaml                 # Default values (x86_64)
-├── values/                     # Architecture-specific values
-│   ├── kata-s390x.yaml         # s390x kata runtime config
-│   ├── kata-aarch64.yaml       # aarch64 kata runtime config
-│   └── kata-remote.yaml        # peer-pods kata runtime config
-├── examples-custom-values.yaml # Example custom configurations
-├── templates/                  # Helm templates
-│   ├── _helpers.tpl            # Template helpers for architecture support
-│   └── NOTES.txt               # Post-installation notes (architecture-aware)
-├── README.md                   # Main documentation (you are here)
-├── QUICKSTART.md               # Quick start guide with all customization examples
-├── .helmignore
-└── LICENSE
-```
 
 ## Multi-Architecture Support
 
