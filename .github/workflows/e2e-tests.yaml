@@ -322,9 +322,8 @@ jobs:
           # Add k8s distribution
           ARGS="${ARGS} --set ${CHART_VARIANT}.k8sDistribution=${{ steps.k8s-distro-name.outputs.name }}"
           
-          # Add image pull mode specific flags (only for CI, standard uses defaults)
-          if [ "${{ matrix.deployment-type }}" = "ci" ] && [ "${{ matrix.image-pull-mode }}" = "experimental-force-guest-pull" ]; then
-            ARGS="${ARGS} --set ${CHART_VARIANT}.env.snapshotterHandlerMapping='' --set ${CHART_VARIANT}.env.pullTypeMapping=\"\" --set ${CHART_VARIANT}.env._experimentalSetupSnapshotter=\"\" --set ${CHART_VARIANT}.env._experimentalForceGuestPull=qemu-coco-dev"
+          if [ "${{ matrix.image-pull-mode }}" = "experimental-force-guest-pull" ]; then
+            ARGS="${ARGS} --set ${CHART_VARIANT}.env.snapshotterHandlerMapping='' --set ${CHART_VARIANT}.env.pullTypeMapping='' --set ${CHART_VARIANT}.env._experimentalSetupSnapshotter='' --set ${CHART_VARIANT}.env._experimentalForceGuestPull=qemu-coco-dev"
           fi
           
           # Add containerd upgrade flags (only for containerd upgrade test)
