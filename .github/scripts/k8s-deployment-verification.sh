@@ -5,6 +5,11 @@
 
 set -euo pipefail
 
+# Source common utilities (retry_kubectl, etc.)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
+source "${SCRIPT_DIR}/common.sh"
+
 wait_daemonset() {
     local namespace="kube-system" label="name=kata-as-coco-runtime" timeout="15m"
     
@@ -19,13 +24,13 @@ wait_daemonset() {
     
     echo "⏳ Waiting for daemonset (label: $label, timeout: $timeout)..."
     
-    if kubectl wait --for=condition=ready pod -l "$label" -n "$namespace" --timeout="$timeout"; then
+    if retry_kubectl kubectl wait --for=condition=ready pod -l "$label" -n "$namespace" --timeout="$timeout"; then
         echo "✅ DaemonSet pods ready"
     else
         echo "❌ DaemonSet pods not ready"
-        kubectl get daemonset -n "$namespace" -l "$label"
-        kubectl get pods -n "$namespace" -l "$label"
-        kubectl describe pods -n "$namespace" -l "$label"
+        retry_kubectl kubectl get daemonset -n "$namespace" -l "$label"
+        retry_kubectl kubectl get pods -n "$namespace" -l "$label"
+        retry_kubectl kubectl describe pods -n "$namespace" -l "$label"
         exit 1
     fi
 }
@@ -43,17 +48,17 @@ verify_daemonset() {
     
     echo "🔍 Verifying daemonset..."
     
-    local pod_name=$(kubectl get pods -n "$namespace" -l "$label" -o jsonpath='{.items[0].metadata.name}')
+    local pod_name=$(retry_kubectl kubectl get pods -n "$namespace" -l "$label" -o jsonpath='{.items[0].metadata.name}')
     [ -z "$pod_name" ] && { echo "❌ No pods with label $label"; exit 1; }
     
-    local ds_name=$(kubectl get pod "$pod_name" -n "$namespace" -o jsonpath='{.metadata.ownerReferences[0].name}')
+    local ds_name=$(retry_kubectl kubectl get pod "$pod_name" -n "$namespace" -o jsonpath='{.metadata.ownerReferences[0].name}')
     [ -z "$ds_name" ] && { echo "❌ Cannot find DaemonSet name"; exit 1; }
     
     echo "DaemonSet: $ds_name"
-    kubectl get daemonset "$ds_name" -n "$namespace"
+    retry_kubectl kubectl get daemonset "$ds_name" -n "$namespace"
     
-    local desired=$(kubectl get daemonset "$ds_name" -n "$namespace" -o jsonpath='{.status.desiredNumberScheduled}')
-    local ready=$(kubectl get daemonset "$ds_name" -n "$namespace" -o jsonpath='{.status.numberReady}')
+    local desired=$(retry_kubectl kubectl get daemonset "$ds_name" -n "$namespace" -o jsonpath='{.status.desiredNumberScheduled}')
+    local ready=$(retry_kubectl kubectl get daemonset "$ds_name" -n "$namespace" -o jsonpath='{.status.numberReady}')
     
     echo "Status: $ready/$desired ready"
     
@@ -80,7 +85,7 @@ show_logs() {
     done
     
     echo "📋 DaemonSet logs (last $tail lines):"
-    kubectl logs -n "$namespace" -l "$label" --tail="$tail" --prefix=true
+    retry_kubectl kubectl logs -n "$namespace" -l "$label" --tail="$tail" --prefix=true
 }
 
 verify_runtimeclasses() {
@@ -103,11 +108,11 @@ verify_runtimeclasses() {
     local interval=5 elapsed=0
     while [ $elapsed -lt $timeout ]; do
         echo "⏱️ [$elapsed/$timeout] Checking..."
-        kubectl get runtimeclass 2>/dev/null || echo "No RuntimeClasses yet"
+        retry_kubectl kubectl get runtimeclass 2>/dev/null || echo "No RuntimeClasses yet"
         
         local all_found=true
         for rc in "${runtimeclasses[@]}"; do
-            if kubectl get runtimeclass "$rc" >/dev/null 2>&1; then
+            if retry_kubectl kubectl get runtimeclass "$rc" >/dev/null 2>&1; then
                 echo "  ✅ $rc"
             else
                 echo "  ⏳ $rc"
@@ -126,7 +131,7 @@ verify_runtimeclasses() {
     done
     
     echo "❌ Timeout: Missing RuntimeClasses after ${timeout}s"
-    kubectl get runtimeclass 2>/dev/null || echo "No RuntimeClasses found"
+    retry_kubectl kubectl get runtimeclass 2>/dev/null || echo "No RuntimeClasses found"
     [ -n "${GITHUB_OUTPUT:-}" ] && echo "status=failed" >> "$GITHUB_OUTPUT"
     exit 1
 }
@@ -139,9 +144,9 @@ show_runtimeclass_details() {
     
     echo "📋 RuntimeClass details:"
     for rc in "$@"; do
-        if kubectl get runtimeclass "$rc" >/dev/null 2>&1; then
+        if retry_kubectl kubectl get runtimeclass "$rc" >/dev/null 2>&1; then
             echo -e "\n=== $rc ==="
-            kubectl get runtimeclass "$rc" -o yaml
+            retry_kubectl kubectl get runtimeclass "$rc" -o yaml
         fi
     done
 }

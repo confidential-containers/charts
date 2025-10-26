@@ -5,6 +5,11 @@
 
 set -euo pipefail
 
+# Source common utilities (retry_kubectl, etc.)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
+source "${SCRIPT_DIR}/common.sh"
+
 free_disk_space() {
     echo "🧹 Removing unnecessary directories to free up disk space..."
     sudo rm -rf /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/lib/android /usr/share/dotnet
@@ -111,8 +116,8 @@ init_kubeadm_cluster() {
 
 install_flannel() {
     echo "📦 Installing Flannel CNI..."
-    kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
-    kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
+    retry_kubectl kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+    retry_kubectl kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
     echo "✅ Flannel installed"
 }
 
@@ -156,12 +161,30 @@ setup_kubectl() {
 verify_cluster() {
     local dist="${1:-Kubernetes}"
     echo "🔍 Verifying $dist cluster..."
-    kubectl get nodes && kubectl get pods -A
-    kubectl wait --for=condition=Ready pods --all --all-namespaces --timeout=10m --field-selector=status.phase!=Succeeded,status.phase!=Failed
-    local not_ready=$(kubectl get pods -A -o json | jq -r '.items[]|select(.status.phase!="Running" and .status.phase!="Succeeded")|"\(.metadata.namespace)/\(.metadata.name)"')
-    if [ -n "$not_ready" ]; then
-        echo "❌ Some pods not ready: $not_ready" && kubectl get pods -A && exit 1
+    retry_kubectl kubectl get nodes && retry_kubectl kubectl get pods -A
+
+    echo "⏳ Waiting for all system pods to be ready (timeout: 10m)..."
+    retry_kubectl kubectl wait --for=condition=Ready pods --all --all-namespaces --timeout=10m \
+      --field-selector=status.phase!=Succeeded,status.phase!=Failed
+
+    echo "🔍 Checking for any pods in error states..."
+    local failed_pods=$(retry_kubectl kubectl get pods -A -o json | \
+      jq -r '.items[] | select(.status.phase == "Failed" or .status.phase == "Unknown" or 
+             (.status.containerStatuses != null and 
+              (.status.containerStatuses[] | select(.state.waiting != null and 
+               (.state.waiting.reason == "CrashLoopBackOff" or 
+                .state.waiting.reason == "ImagePullBackOff" or 
+                .state.waiting.reason == "ErrImagePull"))))) | 
+             "\(.metadata.namespace)/\(.metadata.name)"' 2>/dev/null || echo "")
+
+    if [ -n "$failed_pods" ]; then
+        echo "❌ Some pods are in error states:"
+        echo "$failed_pods"
+        retry_kubectl kubectl get pods -A
+        retry_kubectl kubectl describe pods -A | grep -A 10 "^Name:\|^Events:" || true
+        exit 1
     fi
+
     echo "✅ $dist cluster ready!"
     command -v containerd >/dev/null 2>&1 && echo "containerd: $(containerd --version)" || true
     command -v crio >/dev/null 2>&1 && echo "crio: $(crio --version)" || true
