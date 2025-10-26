@@ -30,125 +30,37 @@ runs:
     - name: Wait for kata-deploy daemonset
       shell: bash
       run: |
-        echo "⏳ Waiting for kata-deploy daemonset to be ready..."
-        echo "   Label selector: ${{ inputs.daemonset-label }}"
-        echo "   Timeout: ${{ inputs.daemonset-timeout }}"
-        
-        if kubectl wait --for=condition=ready pod \
-          -l ${{ inputs.daemonset-label }} \
-          -n ${{ inputs.namespace }} \
-          --timeout=${{ inputs.daemonset-timeout }}; then
-          echo "✅ DaemonSet pods are ready"
-        else
-          echo "❌ DaemonSet pods failed to become ready"
-          echo ""
-          echo "DaemonSet status:"
-          kubectl get daemonset -n ${{ inputs.namespace }} -l ${{ inputs.daemonset-label }}
-          echo ""
-          echo "Pod status:"
-          kubectl get pods -n ${{ inputs.namespace }} -l ${{ inputs.daemonset-label }}
-          echo ""
-          echo "Pod describe:"
-          kubectl describe pods -n ${{ inputs.namespace }} -l ${{ inputs.daemonset-label }}
-          exit 1
-        fi
+        ${{ github.action_path }}/../../scripts/k8s-operations.sh deployment wait-daemonset \
+          --namespace ${{ inputs.namespace }} \
+          --label ${{ inputs.daemonset-label }} \
+          --timeout ${{ inputs.daemonset-timeout }}
 
     - name: Verify daemonset status
       shell: bash
       run: |
-        echo "🔍 Verifying daemonset status..."
-        
-        # Get the daemonset name from the pod's owner reference
-        POD_NAME=$(kubectl get pods -n ${{ inputs.namespace }} -l ${{ inputs.daemonset-label }} -o jsonpath='{.items[0].metadata.name}')
-        if [ -z "$POD_NAME" ]; then
-          echo "❌ No pods found with label ${{ inputs.daemonset-label }}"
-          exit 1
-        fi
-        
-        DS_NAME=$(kubectl get pod "$POD_NAME" -n ${{ inputs.namespace }} -o jsonpath='{.metadata.ownerReferences[0].name}')
-        if [ -z "$DS_NAME" ]; then
-          echo "❌ Could not find DaemonSet name from pod"
-          exit 1
-        fi
-        
-        echo "Found DaemonSet: $DS_NAME"
-        kubectl get daemonset "$DS_NAME" -n ${{ inputs.namespace }}
-        
-        # Get desired vs ready count
-        DESIRED=$(kubectl get daemonset "$DS_NAME" -n ${{ inputs.namespace }} -o jsonpath='{.status.desiredNumberScheduled}')
-        READY=$(kubectl get daemonset "$DS_NAME" -n ${{ inputs.namespace }} -o jsonpath='{.status.numberReady}')
-        
-        echo "Desired: $DESIRED, Ready: $READY"
-        
-        if [ "$DESIRED" = "$READY" ] && [ "$READY" != "0" ]; then
-          echo "✅ DaemonSet is healthy (${READY}/${DESIRED} pods ready)"
-        else
-          echo "❌ DaemonSet is not healthy (${READY}/${DESIRED} pods ready)"
-          exit 1
-        fi
+        ${{ github.action_path }}/../../scripts/k8s-operations.sh deployment verify-daemonset \
+          --namespace ${{ inputs.namespace }} \
+          --label ${{ inputs.daemonset-label }}
 
     - name: Show daemonset logs
       shell: bash
       run: |
-        echo "📋 DaemonSet logs (last 50 lines):"
-        kubectl logs -n ${{ inputs.namespace }} -l ${{ inputs.daemonset-label }} --tail=50 --prefix=true
+        ${{ github.action_path }}/../../scripts/k8s-operations.sh deployment show-logs \
+          --namespace ${{ inputs.namespace }} \
+          --label ${{ inputs.daemonset-label }} \
+          --tail 50
 
     - name: Verify RuntimeClasses
       id: verify
       shell: bash
       run: |
-        echo "🔍 Verifying RuntimeClasses..."
-        echo "   Expected: ${{ inputs.expected-runtime-classes }}"
-        echo "   Timeout: 3 minutes"
-        
-        # Wait up to 3 minutes for RuntimeClasses to appear
-        TIMEOUT=180  # 3 minutes
-        INTERVAL=5   # Check every 5 seconds
-        ELAPSED=0
-        
-        while [ $ELAPSED -lt $TIMEOUT ]; do
-          echo ""
-          echo "⏱️  Checking RuntimeClasses (elapsed: ${ELAPSED}s / ${TIMEOUT}s)..."
-          kubectl get runtimeclass 2>/dev/null || echo "No RuntimeClasses found yet"
-          
-          ALL_FOUND=true
-          for rc in ${{ inputs.expected-runtime-classes }}; do
-            if kubectl get runtimeclass "$rc" >/dev/null 2>&1; then
-              echo "  ✅ Found RuntimeClass: $rc"
-            else
-              echo "  ⏳ Waiting for RuntimeClass: $rc"
-              ALL_FOUND=false
-            fi
-          done
-          
-          if [ "$ALL_FOUND" = "true" ]; then
-            echo ""
-            echo "✅ All expected RuntimeClasses exist"
-            echo "status=success" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          sleep $INTERVAL
-          ELAPSED=$((ELAPSED + INTERVAL))
-        done
-        
-        # Timeout reached
-        echo ""
-        echo "❌ Timeout: Some RuntimeClasses are still missing after ${TIMEOUT}s"
-        echo "Final state:"
-        kubectl get runtimeclass 2>/dev/null || echo "No RuntimeClasses found"
-        echo "status=failed" >> $GITHUB_OUTPUT
-        exit 1
+        ${{ github.action_path }}/../../scripts/k8s-operations.sh deployment verify-runtimeclasses \
+          ${{ inputs.expected-runtime-classes }} \
+          --timeout 180
 
     - name: Show RuntimeClass details
       shell: bash
       run: |
-        echo "📋 RuntimeClass details:"
-        for rc in ${{ inputs.expected-runtime-classes }}; do
-          if kubectl get runtimeclass "$rc" >/dev/null 2>&1; then
-            echo ""
-            echo "=== $rc ==="
-            kubectl get runtimeclass "$rc" -o yaml
-          fi
-        done
+        ${{ github.action_path }}/../../scripts/k8s-operations.sh deployment show-runtimeclass-details \
+          ${{ inputs.expected-runtime-classes }}
 
