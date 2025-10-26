@@ -713,7 +713,7 @@ jobs:
           fi
 
       - name: Test normal pod after cleanup
-        if: always() && matrix.test-containerd-upgrade == 'true'
+        if: always() && steps.should-run.outputs.should-run == 'true'
         run: |
           echo "🧪 Testing normal pod creation after cleanup..."
           echo "This ensures containerd still works for regular (non-Kata) workloads"
