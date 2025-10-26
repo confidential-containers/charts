@@ -30,21 +30,20 @@ runs:
       shell: bash
       run: ${{ github.action_path }}/../../scripts/k8s-operations.sh pod verify-cluster-health
 
-    - name: Create test pod
+    - name: Create and wait for test pod (with retries for flaky network)
       shell: bash
       run: |
-        ${{ github.action_path }}/../../scripts/k8s-operations.sh pod create \
-          ${{ inputs.pod-name }} \
-          ${{ inputs.runtime-class }} \
-          ${{ inputs.namespace }}
-
-    - name: Wait for pod
-      shell: bash
-      run: |
-        ${{ github.action_path }}/../../scripts/k8s-operations.sh pod wait \
-          ${{ inputs.pod-name }} \
-          ${{ inputs.namespace }} \
-          300
+        # Source common utilities
+        SCRIPT_DIR="${{ github.action_path }}/../../scripts"
+        source "${SCRIPT_DIR}/common.sh"
+        
+        # Use retry_pod_creation to handle flaky network issues during image pulls
+        # This will retry up to 5 times if the pod fails due to image pull timeouts
+        retry_pod_creation \
+          "${{ inputs.pod-name }}" \
+          "${{ inputs.runtime-class }}" \
+          "${{ inputs.namespace }}" \
+          "300"
 
     - name: Check pod status
       id: check-status
