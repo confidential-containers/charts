@@ -337,17 +337,87 @@ jobs:
         if: steps.should-run.outputs.should-run == 'true'
         id: deployment-params
         run: |
+          CHART_VARIANT=""
           if [ "${{ matrix.deployment-type }}" = "ci" ]; then
             echo "release-name=coco-ci" >> $GITHUB_OUTPUT
             echo "daemonset-label=name=kata-as-coco-runtime-for-ci" >> $GITHUB_OUTPUT
-            echo "expected-runtimeclasses=kata-qemu-coco-dev" >> $GITHUB_OUTPUT
-            echo "test-pod-name=kata-ci-test-pod" >> $GITHUB_OUTPUT
+            CHART_VARIANT="kata-as-coco-runtime-for-ci"
           else
             echo "release-name=coco" >> $GITHUB_OUTPUT
             echo "daemonset-label=name=kata-as-coco-runtime" >> $GITHUB_OUTPUT
-            echo "expected-runtimeclasses=kata-qemu-coco-dev kata-qemu-snp kata-qemu-tdx" >> $GITHUB_OUTPUT
-            echo "test-pod-name=kata-standard-test-pod" >> $GITHUB_OUTPUT
+            CHART_VARIANT="kata-as-coco-runtime"
           fi
+          
+          # Detect architecture and select appropriate values file
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64)
+              VALUES_FILE="values.yaml"
+              RUNTIME_CLASS_SHIM="qemu-coco-dev"
+              ;;
+            s390x)
+              VALUES_FILE="values/kata-s390x.yaml"
+              RUNTIME_CLASS_SHIM="qemu-coco-dev"  # s390x default
+              ;;
+            aarch64)
+              VALUES_FILE="values/kata-aarch64.yaml"
+              RUNTIME_CLASS_SHIM="qemu-coco-dev"  # aarch64 default
+              ;;
+            *)
+              echo "❌ Unsupported architecture: $ARCH"
+              exit 1
+              ;;
+          esac
+          
+          echo "ℹ️  Detected architecture: ${ARCH}"
+          echo "ℹ️  Using values file: ${VALUES_FILE}"
+          
+          # Validate values file exists
+          if [ ! -f "${VALUES_FILE}" ]; then
+            echo "❌ Values file not found: ${VALUES_FILE}"
+            exit 1
+          fi
+          
+          echo "values-file=${VALUES_FILE}" >> $GITHUB_OUTPUT
+          
+          # Get all available shims from values.yaml for this chart variant
+          ALL_SHIMS=$(yq eval ".${CHART_VARIANT}.env.shims" "${VALUES_FILE}")
+          if [ -z "$ALL_SHIMS" ]; then
+            echo "❌ Failed to extract shims from ${VALUES_FILE} under ${CHART_VARIANT}.env.shims"
+            exit 1
+          fi
+          
+          echo "ℹ️  Available shims in ${VALUES_FILE}: ${ALL_SHIMS}"
+          
+          # Validate that selected shim exists in the values file
+          if ! echo "$ALL_SHIMS" | grep -qw "$RUNTIME_CLASS_SHIM"; then
+            echo "❌ Selected shim '$RUNTIME_CLASS_SHIM' not found in available shims: $ALL_SHIMS"
+            exit 1
+          fi
+          
+          # Convert shim to RuntimeClass format
+          TEST_RUNTIME_CLASS="kata-${RUNTIME_CLASS_SHIM}"
+          
+          # Extract ALL shims and convert to RuntimeClass format for verification
+          # This ensures we verify that all available runtime classes are properly created
+          RUNTIME_CLASSES=""
+          for shim in $ALL_SHIMS; do
+            runtime_class="kata-${shim}"
+            if [ -z "$RUNTIME_CLASSES" ]; then
+              RUNTIME_CLASSES="$runtime_class"
+            else
+              RUNTIME_CLASSES="${RUNTIME_CLASSES} ${runtime_class}"
+            fi
+          done
+          
+          echo "expected-runtimeclasses=${RUNTIME_CLASSES}" >> $GITHUB_OUTPUT
+          echo "test-pod-name=kata-test-pod" >> $GITHUB_OUTPUT
+          echo "first-runtime-class=${TEST_RUNTIME_CLASS}" >> $GITHUB_OUTPUT
+          
+          echo "✅ Using values file: ${VALUES_FILE}"
+          echo "✅ Architecture: ${ARCH}"
+          echo "✅ Test pod runtime class: ${TEST_RUNTIME_CLASS} (selected for this hardware)"
+          echo "✅ Verify all runtime classes are created: ${RUNTIME_CLASSES}"
 
       - name: Install chart
         if: steps.should-run.outputs.should-run == 'true'
@@ -355,6 +425,7 @@ jobs:
         with:
           release-name: ${{ steps.deployment-params.outputs.release-name }}
           namespace: kube-system
+          values-file: ${{ steps.deployment-params.outputs.values-file }}
           extra-args: ${{ steps.helm-args.outputs.args }}
           wait-timeout: 15m
 
@@ -418,7 +489,7 @@ jobs:
         if: steps.should-run.outputs.should-run == 'true'
         uses: ./.github/actions/run-test-pod
         with:
-          runtime-class: kata-qemu-coco-dev
+          runtime-class: ${{ steps.deployment-params.outputs.first-runtime-class }}
           namespace: default
           pod-name: ${{ steps.deployment-params.outputs.test-pod-name }}
           timeout: 5m
@@ -445,7 +516,7 @@ jobs:
           
           echo ""
           echo "=== Kata Containers Configuration ==="
-          RUNTIME_CLASS="kata-qemu-coco-dev"
+          RUNTIME_CLASS="${{ steps.deployment-params.outputs.first-runtime-class }}"
           # Extract the configuration file name from RuntimeClass (e.g., kata-qemu-coco-dev -> qemu-coco-dev)
           CONFIG_NAME="${RUNTIME_CLASS#kata-}"
           
