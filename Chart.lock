@@ -1,6 +1,6 @@
 dependencies:
-- name: kata-deploy
-  repository: oci://ghcr.io/kata-containers/kata-deploy-charts
-  version: 3.21.0
-digest: sha256:65eb9c198f907fb4eb18a8b8679b3ec624c34008516ada467382463baab6a5c0
-generated: "2025-10-24T17:10:59.456732835+02:00"
+  - name: kata-deploy
+    repository: oci://ghcr.io/kata-containers/kata-deploy-charts
+    version: 3.20.0
+digest: sha256:0595637297ad092eaf92f58017adb940330bed974a91feca1cb57b7ad69f2d71
+generated: "2025-10-26T16:44:29.079852518Z"
