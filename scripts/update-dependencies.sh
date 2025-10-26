@@ -12,6 +12,14 @@
 #
 # The 0.0.0-dev version is used only for kata-as-coco-runtime-for-ci during
 # CI testing and should never be committed to Chart.lock.
+#
+# Requirements:
+# System tools (must be pre-installed):
+# - curl
+#
+# The script will automatically download the latest versions of:
+# - yq (mikefarah/yq)
+# - helm
 
 set -euo pipefail
 
@@ -21,6 +29,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Temporary directory for tools
+TOOLS_DIR=""
 
 # Helper functions
 info() {
@@ -39,30 +50,128 @@ error() {
     echo -e "${RED}❌${NC} $*" >&2
 }
 
+# Cleanup function
+cleanup() {
+    # Clean up temporary tools directory
+    if [ -n "${TOOLS_DIR}" ] && [ -d "${TOOLS_DIR}" ]; then
+        info "Cleaning up temporary tools directory..."
+        rm -rf "${TOOLS_DIR}"
+    fi
+}
+
+# Register cleanup on exit
+trap cleanup EXIT
+
 # Check if running from chart root
 if [ ! -f Chart.yaml ]; then
     error "Chart.yaml not found. Please run this script from the chart root directory."
     exit 1
 fi
 
-# Check if helm is available
-if ! command -v helm &> /dev/null; then
-    error "helm command not found. Please install Helm."
-    exit 1
-fi
+# Check required system commands
+check_requirements() {
+    local missing_tools=()
 
-# Check if yq is available
-if ! command -v yq &> /dev/null; then
-    error "yq command not found. Please install yq (mikefarah/yq)."
-    error "Install: https://github.com/mikefarah/yq#install"
-    exit 1
-fi
+    # Only check for curl (needed to download tools)
+    if ! command -v curl &> /dev/null; then
+        missing_tools+=("curl")
+    fi
+
+    if [ ${#missing_tools[@]} -gt 0 ]; then
+        error "Missing required system tools: ${missing_tools[*]}"
+        error "Please install them before running this script"
+        exit 1
+    fi
+
+    success "All required system tools are available"
+}
+
+# Download and setup tools
+setup_tools() {
+    info "Setting up tools in temporary directory..."
+
+    # Create temporary directory
+    TOOLS_DIR="$(mktemp -d)"
+    info "Tools directory: ${TOOLS_DIR}"
+
+    # Detect OS and architecture
+    local os=""
+    local arch=""
+
+    case "$(uname -s)" in
+        Linux*)  os="linux" ;;
+        Darwin*) os="darwin" ;;
+        *)
+            error "Unsupported OS: $(uname -s)"
+            exit 1
+            ;;
+    esac
+
+    case "$(uname -m)" in
+        x86_64)  arch="amd64" ;;
+        aarch64|arm64) arch="arm64" ;;
+        s390x) arch="s390x" ;;
+        *)
+            error "Unsupported architecture: $(uname -m)"
+            exit 1
+            ;;
+    esac
+
+    info "Detected: ${os}/${arch}"
+
+    # Download yq (mikefarah/yq - the Go version)
+    info "Downloading yq..."
+    local yq_version
+    yq_version="$(curl -sS https://api.github.com/repos/mikefarah/yq/releases/latest | grep -o '"tag_name": *"[^"]*"' | sed 's/"tag_name": *"\(.*\)"/\1/')"
+    local yq_url="https://github.com/mikefarah/yq/releases/download/${yq_version}/yq_${os}_${arch}"
+
+    if curl -sS -L -o "${TOOLS_DIR}/yq" "${yq_url}"; then
+        chmod +x "${TOOLS_DIR}/yq"
+        success "Downloaded yq ${yq_version}"
+    else
+        error "Failed to download yq"
+        exit 1
+    fi
+
+    # Download helm
+    info "Downloading helm..."
+    local helm_version
+    helm_version="$(curl -sS https://api.github.com/repos/helm/helm/releases/latest | grep -o '"tag_name": *"[^"]*"' | sed 's/"tag_name": *"\(.*\)"/\1/')"
+    local helm_tar="helm-${helm_version}-${os}-${arch}.tar.gz"
+    local helm_url="https://get.helm.sh/${helm_tar}"
+
+    if curl -sS -L -o "${TOOLS_DIR}/${helm_tar}" "${helm_url}"; then
+        tar -xzf "${TOOLS_DIR}/${helm_tar}" -C "${TOOLS_DIR}" --strip-components=1 "${os}-${arch}/helm"
+        rm "${TOOLS_DIR}/${helm_tar}"
+        chmod +x "${TOOLS_DIR}/helm"
+        success "Downloaded helm ${helm_version}"
+    else
+        error "Failed to download helm"
+        exit 1
+    fi
+
+    # Add tools directory to PATH
+    export PATH="${TOOLS_DIR}:${PATH}"
+
+    # Verify tools work
+    info "Verifying tools..."
+    "${TOOLS_DIR}/yq" --version
+    "${TOOLS_DIR}/helm" version --short
+
+    success "All tools ready"
+}
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║           Update Helm Dependencies & Clean Chart.lock           ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
+
+# Check requirements
+check_requirements
+
+# Setup tools
+setup_tools
 
 # Update dependencies
 info "Updating Helm dependencies..."
