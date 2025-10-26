@@ -163,7 +163,7 @@ setup_tools() {
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║           Update Helm Dependencies & Clean Chart.lock           ║"
+echo "║           Update Helm Dependencies & Clean Chart.lock            ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
