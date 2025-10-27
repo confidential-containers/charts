@@ -811,8 +811,11 @@ jobs:
       - name: Check overall tests status
         run: |
           # Check for failures (but allow skipped tests)
-          if [ "${{ needs.e2e-tests.result }}" = "failure" ]; then
-            echo "❌ E2E tests failed"
+          RESULT="${{ needs.e2e-tests.result }}"
+          echo "E2E tests result: ${RESULT}"
+
+          if [ "${RESULT}" != "success" ] && [ "${RESULT}" != "skipped" ]; then
+            echo "❌ E2E tests failed or were cancelled (result: ${RESULT})"
             exit 1
           fi
           echo "✅ All E2E tests passed or were skipped as expected"
