@@ -6,6 +6,23 @@ Umbrella Helm chart for Confidential Containers. This chart deploys kata-contain
 
 ⚠️ **Early Stage Development** - This Helm chart is in its primary development phase as part of the effort to provide an alternative deployment method for Confidential Containers.
 
+⚠️ **If you're testing the project, be aware of:**
+* kata-as-coco-runtime is enabled by default
+* kata-as-coco-runtime-for-ci is disabled by default
+* When using the kata-as-coco-runtime-for-ci we always need to:
+  ```
+      --set kata-as-coco-runtime.enabled=false
+      --set kata-as-coco-runtime-for-ci.enabled=true
+  ```
+* Here is an example of a working installation using rke2:
+  ```
+  helm install rke2-example . \
+      --set kata-as-coco-runtime.enabled=false \
+      --set kata-as-coco-runtime-for-ci.enabled=true \
+      --set kata-as-coco-runtime-for-ci.k8sDistribution=rke2 \
+      --set kata-as-coco-runtime-for-ci.nodeSelector."node-role\.kubernetes\.io/worker"=""
+  ```
+
 **Goal:** Replace the [Confidential Containers Operator](https://github.com/confidential-containers/operator) as the primary deployment method by the **0.18.0 release**.
 
 **Current Focus:**
