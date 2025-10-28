@@ -76,7 +76,7 @@ install_crio() {
     echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://download.opensuse.org/repositories/isv:/cri-o:/stable:/${crio_ver}/deb/ /" | sudo tee /etc/apt/sources.list.d/cri-o.list
     sudo apt-get update && sudo apt-get install -y cri-o cri-tools
     sudo mkdir -p /etc/crio/crio.conf.d/
-    cat | sudo tee /etc/crio/crio.conf.d/00-default-capabilities.conf > /dev/null <<EOF
+    sudo tee /etc/crio/crio.conf.d/00-default-capabilities.conf > /dev/null <<EOF
 [crio]
 storage_option = ["overlay.skip_mount_home=true"]
 [crio.runtime]
