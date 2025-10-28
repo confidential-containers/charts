@@ -1,0 +1,12 @@
+# Helm chart packages
+*.tgz
+
+# Release packages directory
+.cr-release-packages/
+
+# Helm dependency charts
+charts/*.tgz
+
+# Temporary files
+.tmp/
+tmp/
