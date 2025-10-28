@@ -15,7 +15,7 @@ maintainers:
 dependencies:
   - name: kata-deploy
     alias: kata-as-coco-runtime
-    version: "3.21.0"
+    version: "3.22.0"
     repository: "oci://ghcr.io/kata-containers/kata-deploy-charts"
     condition: kata-as-coco-runtime.enabled
   - name: kata-deploy

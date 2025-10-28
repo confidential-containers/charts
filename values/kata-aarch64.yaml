@@ -15,6 +15,8 @@ _shimsConfig: &aarch64_shims
   shims: "qemu-coco-dev"
   snapshotterHandlerMapping: "qemu-coco-dev:nydus"
   pullTypeMapping: "qemu-coco-dev:guest-pull"
+  _experimentalSetupSnapshotter: "nydus"
+  _experimentalForceGuestPull: ""
 
 kata-as-coco-runtime:
   <<: *commonConfig
@@ -29,6 +31,3 @@ kata-as-coco-runtime-for-ci:
   env:
     debug: "true"
     <<: *aarch64_shims
-    _experimentalSetupSnapshotter: "nydus"
-    _experimentalForceGuestPull: ""
-

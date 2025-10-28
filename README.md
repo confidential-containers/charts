@@ -201,6 +201,8 @@ Parameters set by architecture-specific kata runtime values files:
 | `kata-as-coco-runtime.env.defaultShim` | Default shim if `kata` is specified in pood annotations | Architecture-specific mappings |
 | `kata-as-coco-runtime.env.snapshotterHandlerMapping` | Snapshotter handler mapping | Architecture-specific mappings |
 | `kata-as-coco-runtime.env.pullTypeMapping` | Image pull type mapping | Architecture-specific mappings |
+| `kata-as-coco-runtime.env._experimentalSetupSnapshotter` | Deploys (nydus) and/or sets up (erofs, nydus) the snapshotter(s) specified as the value (supports multiple snapshotters, separated by commas; e.g., `nydus,erofs`) | `""` |
+| `kata-as-coco-runtime.env._experimentalForceGuestPull` | Enables `experimental_force_guest_pull` for the shim(s) specified as the value (supports multiple shims, separated by commas; e.g., `qemu-tdx,qemu-snp`) | `""` |
 
 ### Additional Parameters (kata-deploy options)
 
@@ -210,7 +212,15 @@ These inherit from kata-deploy defaults but can be overridden:
 |-----------|-------------|---------|
 | `kata-as-coco-runtime.image.reference` | Kata deploy image | `quay.io/kata-containers/kata-deploy` |
 | `kata-as-coco-runtime.image.tag` | Kata deploy image tag | Chart's appVersion |
+| `kata-as-coco-runtime.env.shims_x86_64` | List of shims to deploy for x86_64 (if set, overrides `shims`) | `""` |
+| `kata-as-coco-runtime.env.shims_aarch64` | List of shims to deploy for aarch64 (if set, overrides `shims`) | `""` |
+| `kata-as-coco-runtime.env.shims_s390x` | List of shims to deploy for s390x (if set, overrides `shims`) | `""` |
+| `kata-as-coco-runtime.env.shims_ppc64le` | List of shims to deploy for ppc64le (if set, overrides `shims`) | `""` |
 | `kata-as-coco-runtime.env.defaultShim` | Default shim if `kata` is specified in pod annotations | `""` |
+| `kata-as-coco-runtime.env.defaultShim_x86_64` | The default shim to use if none specified for x86_64 (if set, overrides `defaultShim`) | `""` |
+| `kata-as-coco-runtime.env.defaultShim_aarch64` | The default shim to use if none specified for aarch64 (if set, overrides `defaultShim`) | `""` |
+| `kata-as-coco-runtime.env.defaultShim_s390x` | The default shim to use if none specified for s390x (if set, overrides `defaultShim`) | `""` |
+| `kata-as-coco-runtime.env.defaultShim_ppc64le` | The default shim to use if none specified for ppc64le (if set, overrides `defaultShim`) | `""` |
 | `kata-as-coco-runtime.env.createRuntimeClasses` | Create RuntimeClass resources | `true` |
 | `kata-as-coco-runtime.env.createDefaultRuntimeClass` | Create default k8s RuntimeClass | `false` |
 | `kata-as-coco-runtime.env.installationPrefix` | Installation path prefix | `""` (uses kata-deploy defaults) |
