@@ -5,18 +5,12 @@
 # For the full list of configurable options and their descriptions,
 # see: values.yaml in the chart root
 #
-_commonConfig: &commonConfig
+kata-as-coco-runtime:
   imagePullPolicy: Always
   k8sDistribution: k8s
 
-_shimsConfig: &remote_shims
-  shims: "remote"
-  snapshotterHandlerMapping: "remote:nydus"
-  pullTypeMapping: "remote:guest-pull"
-
-kata-as-coco-runtime:
-  <<: *commonConfig
-  
   env:
     debug: "false"
-    <<: *remote_shims
+    shims: "remote"
+    snapshotterHandlerMapping: "remote:nydus"
+    pullTypeMapping: "remote:guest-pull"

@@ -7,20 +7,14 @@
 #
 architecture: aarch64
 
-_commonConfig: &commonConfig
+kata-as-coco-runtime:
   imagePullPolicy: Always
   k8sDistribution: k8s
 
-_shimsConfig: &aarch64_shims
-  shims: "qemu-coco-dev"
-  snapshotterHandlerMapping: "qemu-coco-dev:nydus"
-  pullTypeMapping: "qemu-coco-dev:guest-pull"
-  _experimentalSetupSnapshotter: "nydus"
-  _experimentalForceGuestPull: ""
-
-kata-as-coco-runtime:
-  <<: *commonConfig
-  
   env:
     debug: "false"
-    <<: *aarch64_shims
+    shims: "qemu-coco-dev"
+    snapshotterHandlerMapping: "qemu-coco-dev:nydus"
+    pullTypeMapping: "qemu-coco-dev:guest-pull"
+    _experimentalSetupSnapshotter: "nydus"
+    _experimentalForceGuestPull: ""

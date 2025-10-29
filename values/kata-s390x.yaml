@@ -7,21 +7,15 @@
 #
 architecture: s390x
 
-_commonConfig: &commonConfig
+kata-as-coco-runtime:
   imagePullPolicy: Always
   k8sDistribution: k8s
 
-_shimsConfig: &s390x_shims
-  defaultShim: ""
-  shims: "qemu-coco-dev qemu-se"
-  snapshotterHandlerMapping: "qemu-coco-dev:nydus,qemu-se:nydus"
-  pullTypeMapping: "qemu-coco-dev:guest-pull,qemu-se:guest-pull"
-  _experimentalSetupSnapshotter: "nydus"
-  _experimentalForceGuestPull: ""
-
-kata-as-coco-runtime:
-  <<: *commonConfig
-  
   env:
     debug: "false"
-    <<: *s390x_shims
+    defaultShim: ""
+    shims: "qemu-coco-dev qemu-se"
+    snapshotterHandlerMapping: "qemu-coco-dev:nydus,qemu-se:nydus"
+    pullTypeMapping: "qemu-coco-dev:guest-pull,qemu-se:guest-pull"
+    _experimentalSetupSnapshotter: "nydus"
+    _experimentalForceGuestPull: ""
