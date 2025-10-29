@@ -44,21 +44,6 @@ customContainerd:
   tolerations:
   - operator: Exists
 
-# Common configuration defaults (shared across all architectures)
-_commonConfig: &commonConfig
-  imagePullPolicy: Always
-  k8sDistribution: k8s
-
-# Shared shim configuration (x86_64)
-# This anchor is reused by both CoCo runtime and CI variant
-_shimsConfig: &x86_64_shims
-  defaultShim: ""
-  shims: "qemu-coco-dev qemu-snp qemu-tdx qemu-nvidia-gpu-snp qemu-nvidia-gpu-tdx"
-  snapshotterHandlerMapping: "qemu-coco-dev:nydus,qemu-snp:nydus,qemu-tdx:nydus,qemu-nvidia-gpu-snp:nydus,qemu-nvidia-gpu-tdx:nydus"
-  pullTypeMapping: "qemu-coco-dev:guest-pull,qemu-snp:guest-pull,qemu-tdx:guest-pull,qemu-nvidia-gpu-snp:guest-pull,qemu-nvidia-gpu-tdx:guest-pull"
-  _experimentalSetupSnapshotter: "nydus"
-  _experimentalForceGuestPull: ""
-
 # Runtime configuration (kata-deploy)
 # Most values are inherited from the kata-deploy subchart defaults.
 # We only override what's specific to Confidential Containers.
@@ -94,8 +79,9 @@ _shimsConfig: &x86_64_shims
 #
 kata-as-coco-runtime:
   enabled: true
-  <<: *commonConfig
-  
+  imagePullPolicy: Always
+  k8sDistribution: k8s
+
   env:
     debug: "false"
     # Deploy TEE-enabled runtime shims for x86_64
@@ -103,4 +89,9 @@ kata-as-coco-runtime:
     #   - values/kata-s390x.yaml for IBM Z
     #   - values/kata-aarch64.yaml for ARM64
     #   - values/kata-remote.yaml for peer-pods
-    <<: *x86_64_shims
+    defaultShim: ""
+    shims: "qemu-coco-dev qemu-snp qemu-tdx qemu-nvidia-gpu-snp qemu-nvidia-gpu-tdx"
+    snapshotterHandlerMapping: "qemu-coco-dev:nydus,qemu-snp:nydus,qemu-tdx:nydus,qemu-nvidia-gpu-snp:nydus,qemu-nvidia-gpu-tdx:nydus"
+    pullTypeMapping: "qemu-coco-dev:guest-pull,qemu-snp:guest-pull,qemu-tdx:guest-pull,qemu-nvidia-gpu-snp:guest-pull,qemu-nvidia-gpu-tdx:guest-pull"
+    _experimentalSetupSnapshotter: "nydus"
+    _experimentalForceGuestPull: ""
