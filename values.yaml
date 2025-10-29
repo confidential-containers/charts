@@ -104,14 +104,3 @@ kata-as-coco-runtime:
     #   - values/kata-aarch64.yaml for ARM64
     #   - values/kata-remote.yaml for peer-pods
     <<: *x86_64_shims
-
-# Optional: CI variant using upstream kata-containers-latest
-# Disabled by default. Uses same shims as CoCo runtime but different image.
-# Enable with: --set kata-as-coco-runtime-for-ci.enabled=true
-kata-as-coco-runtime-for-ci:
-  enabled: false
-  <<: *commonConfig
-  
-  env:
-    debug: "true"
-    <<: *x86_64_shims

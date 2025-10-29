@@ -314,20 +314,17 @@ jobs:
         if: steps.should-run.outputs.should-run == 'true'
         id: helm-args
         run: |
-          # Determine which chart variant to use based on deployment type
+          # Use CI profile for CI deployment type
+          ARGS=""
           if [ "${{ matrix.deployment-type }}" = "ci" ]; then
-            CHART_VARIANT="kata-as-coco-runtime-for-ci"
-            ARGS="--set kata-as-coco-runtime.enabled=false --set ${CHART_VARIANT}.enabled=true"
-          else
-            CHART_VARIANT="kata-as-coco-runtime"
-            ARGS="--set ${CHART_VARIANT}.enabled=true"
+            ARGS="-f values/profile-ci.yaml"
           fi
-          
+
           # Add k8s distribution
-          ARGS="${ARGS} --set ${CHART_VARIANT}.k8sDistribution=${{ steps.k8s-distro-name.outputs.name }}"
-          
+          ARGS="${ARGS} --set kata-as-coco-runtime.k8sDistribution=${{ steps.k8s-distro-name.outputs.name }}"
+
           if [ "${{ matrix.image-pull-mode }}" = "experimental-force-guest-pull" ]; then
-            ARGS="${ARGS} --set ${CHART_VARIANT}.env.snapshotterHandlerMapping='' --set ${CHART_VARIANT}.env.pullTypeMapping='' --set ${CHART_VARIANT}.env._experimentalSetupSnapshotter='' --set ${CHART_VARIANT}.env._experimentalForceGuestPull=qemu-coco-dev"
+            ARGS="${ARGS} --set kata-as-coco-runtime.env.snapshotterHandlerMapping='' --set kata-as-coco-runtime.env.pullTypeMapping='' --set kata-as-coco-runtime.env._experimentalSetupSnapshotter='' --set kata-as-coco-runtime.env._experimentalForceGuestPull=qemu-coco-dev"
           fi
           
           # Add containerd upgrade flags (only for containerd upgrade test)
@@ -341,16 +338,13 @@ jobs:
         if: steps.should-run.outputs.should-run == 'true'
         id: deployment-params
         run: |
-          CHART_VARIANT=""
           if [ "${{ matrix.deployment-type }}" = "ci" ]; then
             echo "release-name=coco-ci" >> $GITHUB_OUTPUT
-            echo "daemonset-label=name=kata-as-coco-runtime-for-ci" >> $GITHUB_OUTPUT
-            CHART_VARIANT="kata-as-coco-runtime-for-ci"
           else
             echo "release-name=coco" >> $GITHUB_OUTPUT
-            echo "daemonset-label=name=kata-as-coco-runtime" >> $GITHUB_OUTPUT
-            CHART_VARIANT="kata-as-coco-runtime"
           fi
+          # DaemonSet label is always the same
+          echo "daemonset-label=name=kata-as-coco-runtime" >> $GITHUB_OUTPUT
           
           # Detect architecture and select appropriate values file
           ARCH=$(uname -m)
@@ -383,11 +377,11 @@ jobs:
           fi
           
           echo "values-file=${VALUES_FILE}" >> $GITHUB_OUTPUT
-          
-          # Get all available shims from values.yaml for this chart variant
-          ALL_SHIMS=$(yq eval ".${CHART_VARIANT}.env.shims" "${VALUES_FILE}")
+
+          # Get all available shims from values.yaml
+          ALL_SHIMS=$(yq eval ".kata-as-coco-runtime.env.shims" "${VALUES_FILE}")
           if [ -z "$ALL_SHIMS" ]; then
-            echo "❌ Failed to extract shims from ${VALUES_FILE} under ${CHART_VARIANT}.env.shims"
+            echo "❌ Failed to extract shims from ${VALUES_FILE} under kata-as-coco-runtime.env.shims"
             exit 1
           fi
           
