@@ -58,9 +58,14 @@ install_containerd() {
 
 install_crio() {
     echo "📦 Installing CRI-O..."
+
+    echo "FIDENCIO DEBUG"
+    sudo apt-get -y remove podman
+    echo "FIDENCIO DEBUG"
+ 
     local k8s_ver=$(curl -Ls https://dl.k8s.io/release/stable.txt | cut -d. -f-2)
     [ -z "$k8s_ver" ] && { echo "❌ Failed to determine K8s version"; exit 1; }
-    
+   
     local crio_ver="$k8s_ver"
     if ! curl -fsSL --head "https://download.opensuse.org/repositories/isv:/cri-o:/stable:/${crio_ver}/deb/Release.key" >/dev/null 2>&1; then
         local api_url="https://api.github.com/repos/cri-o/cri-o/releases"
@@ -83,7 +88,13 @@ storage_option = ["overlay.skip_mount_home=true"]
 default_capabilities = ["CHOWN","DAC_OVERRIDE","FSETID","FOWNER","SETGID","SETUID","SETPCAP","NET_BIND_SERVICE","KILL","SYS_CHROOT"]
 EOF
     sudo systemctl daemon-reload && sudo systemctl enable --now crio && sudo systemctl restart crio
+
     echo "✅ CRI-O installed: $(crio --version)"
+    echo "FIDENCIO DEBUG"
+    echo "crio config"
+    sudo crio config
+    echo "FIDENCIO DEBUG"
+
 }
 
 install_kubeadm_components() {
