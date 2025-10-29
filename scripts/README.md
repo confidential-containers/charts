@@ -2,40 +2,19 @@
 
 This directory contains helper scripts for managing the Confidential Containers Helm chart.
 
-## update-dependencies.sh
+## Updating Dependencies
 
-Updates Helm chart dependencies and automatically cleans `Chart.lock` by removing CI-only dependencies (0.0.0-dev entries).
+Most users don't need to run this command, because when installing from an OCI registry, Helm fetches dependencies automatically.
 
-### What it does
-
-1. **Runs `helm dependency update`** to fetch all dependencies
-2. **Downloads dependency tarballs** to `charts/` directory
-3. **Automatically removes** `kata-as-coco-runtime-for-ci` (0.0.0-dev) from `Chart.lock`
-4. **Recalculates the digest** and updates timestamp
-5. **Keeps `Chart.lock` clean** for reproducible builds
-
-### Requirements
-
-- **helm** - Helm CLI
-- **yq** (mikefarah/yq) - YAML processor
-- **awk** - Text processing
-- **sha256sum** - Digest calculation
-
-### Usage
+If you are developing this chart and trying to install local changes (e.g., `helm install coco . --namespace kube-system`), you need to download the dependency charts first:
 
 ```bash
-# From the chart root directory
-./scripts/update-dependencies.sh
+helm dependency update
 ```
 
-### When to use
+This downloads dependency chart tarballs to the `charts/` directory. These files are required for local installation but are not committed to git.
 
-- After modifying `Chart.yaml` dependencies
-- When bumping `kata-deploy` version
-- Before creating a release PR
-- Any time you need to update dependencies
-
-See [`.github/README.md`](../.github/README.md#update-dependenciessh) for detailed documentation.
+**Note:** The `prepare-release.sh` script runs this automatically when preparing releases.
 
 ## prepare-release.sh
 
@@ -47,7 +26,7 @@ Automates the release preparation process for the Helm chart.
 2. **Updates Chart.yaml** with:
    - New chart version (automatically bumped)
    - New kata-deploy dependency version
-3. **Updates Helm dependencies** (runs `./scripts/update-dependencies.sh`)
+3. **Updates Helm dependencies** (runs `helm dependency update`)
 4. **Creates a new branch** (e.g., `topic/prepare-release-0.17.0`)
 5. **Commits the changes** with a descriptive message
 6. **Pushes and creates a pull request** with a detailed description

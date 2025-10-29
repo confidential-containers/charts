@@ -1,0 +1,24 @@
+# CI Profile - Uses latest kata-containers build from main branch
+#
+# This profile configures the chart to use the latest development builds
+# from the kata-containers CI pipeline instead of stable releases.
+#
+# Usage:
+#   helm install coco . -f values/kata-remote.yaml -f values/profile-ci.yaml --namespace kube-system
+#
+# For different architectures, combine with architecture-specific values:
+#   helm install coco . -f values/kata-s390x.yaml -f values/profile-ci.yaml --namespace kube-system
+#
+
+kata-as-coco-runtime:
+  image:
+    # CI image repository (built from main branch)
+    reference: "quay.io/kata-containers/kata-deploy-ci"
+    # Latest tag from CI builds
+    tag: "kata-containers-latest"
+  env:
+    # Enable debug logging for CI testing
+    debug: "true"
+    # Experimental features
+    _experimentalSetupSnapshotter: "nydus"
+    _experimentalForceGuestPull: ""

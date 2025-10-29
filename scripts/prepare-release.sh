@@ -325,12 +325,14 @@ update_chart() {
 
 # Update Helm dependencies
 update_dependencies() {
-    info "Running update-dependencies.sh script..."
-    
-    if ! "${SCRIPT_DIR}/update-dependencies.sh"; then
+    info "Updating Helm dependencies..."
+
+    if ! helm dependency update; then
         error "Failed to update dependencies"
         exit 1
     fi
+
+    success "Helm dependencies updated"
 }
 
 # Create branch and commit
