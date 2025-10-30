@@ -120,25 +120,25 @@ jobs:
           # x86_64 (Intel/AMD)
           helm install coco oci://ghcr.io/${{ github.repository_owner }}/charts/confidential-containers \\
             --version ${VERSION} \\
-            --namespace kube-system
+            --namespace coco-system
           
           # s390x (IBM Z)
           helm install coco oci://ghcr.io/${{ github.repository_owner }}/charts/confidential-containers \\
             --version ${VERSION} \\
             -f https://raw.githubusercontent.com/${{ github.repository }}/v${VERSION}/values/kata-s390x.yaml \\
-            --namespace kube-system
+            --namespace coco-system
           
           # aarch64 (ARM64)
           helm install coco oci://ghcr.io/${{ github.repository_owner }}/charts/confidential-containers \\
             --version ${VERSION} \\
             -f https://raw.githubusercontent.com/${{ github.repository }}/v${VERSION}/values/kata-aarch64.yaml \\
-            --namespace kube-system
+            --namespace coco-system
           
           # peer-pods (remote)
           helm install coco oci://ghcr.io/${{ github.repository_owner }}/charts/confidential-containers \\
             --version ${VERSION} \\
             -f https://raw.githubusercontent.com/${{ github.repository }}/v${VERSION}/values/kata-remote.yaml \\
-            --namespace kube-system
+            --namespace coco-system
           \`\`\`
           
           ## What's Included
@@ -234,7 +234,7 @@ jobs:
           🚀 Installation Command:
              helm install coco oci://ghcr.io/${{ github.repository_owner }}/charts/confidential-containers \\
                --version ${VERSION} \\
-               --namespace kube-system
+               --namespace coco-system
           
           ✅ Chart package available as release artifact
           ✅ Chart pushed to GitHub Container Registry

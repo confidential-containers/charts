@@ -6,7 +6,7 @@ This directory contains helper scripts for managing the Confidential Containers 
 
 Most users don't need to run this command, because when installing from an OCI registry, Helm fetches dependencies automatically.
 
-If you are developing this chart and trying to install local changes (e.g., `helm install coco . --namespace kube-system`), you need to download the dependency charts first:
+If you are developing this chart and trying to install local changes (e.g., `helm install coco . --namespace coco-system`), you need to download the dependency charts first:
 
 ```bash
 helm dependency update

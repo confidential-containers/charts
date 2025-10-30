@@ -15,7 +15,7 @@
 #   install RELEASE_NAME [OPTIONS]
 #       Install Helm chart
 #       Options:
-#         --namespace NAME       Kubernetes namespace (default: kube-system)
+#         --namespace NAME       Kubernetes namespace (default: coco-system)
 #         --values-file PATH     Path to values file (optional)
 #         --extra-args ARGS      Extra Helm install arguments (optional)
 #         --wait-timeout TIME    Timeout for helm install --wait (default: 15m)
@@ -60,7 +60,7 @@ cmd_validate() {
 
 cmd_install() {
     # Default values
-    local namespace="kube-system"
+    local namespace="coco-system"
     local values_file=""
     local extra_args=""
     local wait_timeout="15m"
@@ -71,7 +71,7 @@ cmd_install() {
         echo "Usage: $0 install RELEASE_NAME [OPTIONS]"
         echo ""
         echo "Options:"
-        echo "  --namespace NAME       Kubernetes namespace (default: kube-system)"
+        echo "  --namespace NAME       Kubernetes namespace (default: coco-system)"
         echo "  --values-file PATH     Path to values file (optional)"
         echo "  --extra-args ARGS      Extra Helm install arguments (optional)"
         echo "  --wait-timeout TIME    Timeout for helm install --wait (default: 15m)"

@@ -422,7 +422,7 @@ jobs:
         uses: ./.github/actions/install-chart
         with:
           release-name: ${{ steps.deployment-params.outputs.release-name }}
-          namespace: kube-system
+          namespace: coco-system
           values-file: ${{ steps.deployment-params.outputs.values-file }}
           extra-args: ${{ steps.helm-args.outputs.args }}
           wait-timeout: 15m
@@ -431,7 +431,7 @@ jobs:
         if: steps.should-run.outputs.should-run == 'true'
         uses: ./.github/actions/verify-deployment
         with:
-          namespace: kube-system
+          namespace: coco-system
           expected-runtime-classes: ${{ steps.deployment-params.outputs.expected-runtimeclasses }}
           daemonset-timeout: 15m
           daemonset-label: ${{ steps.deployment-params.outputs.daemonset-label }}
@@ -506,7 +506,7 @@ jobs:
           
           echo ""
           echo "=== DaemonSet status ==="
-          kubectl get daemonset -n kube-system
+          kubectl get daemonset -n coco-system
           
           echo ""
           echo "=== RuntimeClasses ==="
@@ -584,12 +584,12 @@ jobs:
           
           echo ""
           echo "=== kata-deploy logs ==="
-          kubectl logs -n kube-system -l ${{ steps.deployment-params.outputs.daemonset-label }} --tail=200 --prefix=true || echo "No logs available"
+          kubectl logs -n coco-system -l ${{ steps.deployment-params.outputs.daemonset-label }} --tail=200 --prefix=true || echo "No logs available"
           
           if [ "${{ matrix.test-containerd-upgrade }}" == "true" ]; then
             echo ""
             echo "=== containerd-installer logs ==="
-            kubectl logs -n kube-system -l app.kubernetes.io/component=containerd-installer --tail=200 --prefix=true || echo "No logs available"
+            kubectl logs -n coco-system -l app.kubernetes.io/component=containerd-installer --tail=200 --prefix=true || echo "No logs available"
           fi
           
           echo ""
@@ -608,7 +608,7 @@ jobs:
           fi
           
           echo "🗑️  Uninstalling chart: ${RELEASE_NAME}..."
-          helm uninstall ${RELEASE_NAME} -n kube-system --wait --timeout 5m || true
+          helm uninstall ${RELEASE_NAME} -n coco-system --wait --timeout 5m || true
           
           # For containerd upgrade tests, verify rollback
           if [ "${{ matrix.test-containerd-upgrade }}" == "true" ]; then
@@ -620,7 +620,7 @@ jobs:
             ELAPSED=0
             CLEANUP_JOB=""
             while [ $ELAPSED -lt $TIMEOUT ]; do
-              CLEANUP_JOB=$(kubectl get jobs -n kube-system -l app.kubernetes.io/component=containerd-cleanup -o name 2>/dev/null | head -1 || echo "")
+              CLEANUP_JOB=$(kubectl get jobs -n coco-system -l app.kubernetes.io/component=containerd-cleanup -o name 2>/dev/null | head -1 || echo "")
               if [ -n "${CLEANUP_JOB}" ]; then
                 echo "✅ Found cleanup job after ${ELAPSED}s: ${CLEANUP_JOB}"
                 break
@@ -631,14 +631,14 @@ jobs:
             
             if [ -n "${CLEANUP_JOB}" ]; then
               # Wait for the cleanup job to complete
-              if kubectl wait --for=condition=complete --timeout=120s "${CLEANUP_JOB}" -n kube-system 2>/dev/null; then
+              if kubectl wait --for=condition=complete --timeout=120s "${CLEANUP_JOB}" -n coco-system 2>/dev/null; then
                 echo "✅ Cleanup job completed successfully"
                 echo "📋 Cleanup job logs:"
-                kubectl logs -n kube-system "${CLEANUP_JOB}" --tail=50 || true
+                kubectl logs -n coco-system "${CLEANUP_JOB}" --tail=50 || true
               else
                 echo "⚠️  Cleanup job did not complete within timeout"
-                kubectl describe "${CLEANUP_JOB}" -n kube-system || true
-                kubectl logs -n kube-system "${CLEANUP_JOB}" --tail=100 || true
+                kubectl describe "${CLEANUP_JOB}" -n coco-system || true
+                kubectl logs -n coco-system "${CLEANUP_JOB}" --tail=100 || true
               fi
             else
               echo "⚠️  No cleanup job found after ${TIMEOUT}s"
@@ -683,10 +683,10 @@ jobs:
               echo "   Got:      ${AFTER_UNINSTALL_VERSION}"
               echo ""
               echo "Checking for cleanup job status:"
-              kubectl get jobs -n kube-system -l app.kubernetes.io/component=containerd-cleanup || true
+              kubectl get jobs -n coco-system -l app.kubernetes.io/component=containerd-cleanup || true
               echo ""
               echo "Checking for cleanup job logs:"
-              kubectl logs -n kube-system -l app.kubernetes.io/component=containerd-cleanup --tail=100 || true
+              kubectl logs -n coco-system -l app.kubernetes.io/component=containerd-cleanup --tail=100 || true
               exit 1
             fi
           fi
@@ -694,7 +694,7 @@ jobs:
           echo ""
           echo "🔍 Verifying cleanup..."
           echo "Remaining pods:"
-          kubectl get pods -n kube-system -l app.kubernetes.io/instance=${RELEASE_NAME} || echo "No pods found"
+          kubectl get pods -n coco-system -l app.kubernetes.io/instance=${RELEASE_NAME} || echo "No pods found"
           
           echo ""
           echo "Remaining RuntimeClasses:"
@@ -703,7 +703,7 @@ jobs:
           if [ "${{ matrix.test-containerd-upgrade }}" == "true" ]; then
             echo ""
             echo "Remaining cleanup jobs:"
-            kubectl get jobs -n kube-system -l app.kubernetes.io/component=containerd-cleanup || echo "No cleanup jobs found"
+            kubectl get jobs -n coco-system -l app.kubernetes.io/component=containerd-cleanup || echo "No cleanup jobs found"
           fi
 
       - name: Test normal pod after cleanup

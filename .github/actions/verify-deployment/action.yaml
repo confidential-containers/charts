@@ -5,7 +5,7 @@ inputs:
   namespace:
     description: 'Kubernetes namespace where chart is installed'
     required: false
-    default: 'kube-system'
+    default: 'coco-system'
   expected-runtime-classes:
     description: 'Space-separated list of expected RuntimeClass names'
     required: false

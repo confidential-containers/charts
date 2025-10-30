@@ -12,16 +12,16 @@ To use the latest kata-containers build from the main branch for CI testing, use
 
 ```bash
 # Production installation
-helm install coco . --namespace kube-system
+helm install coco . --namespace coco-system
 
 # CI testing with latest build
-helm install coco . -f values/profile-ci.yaml --namespace kube-system
+helm install coco . -f values/profile-ci.yaml --namespace coco-system
 
 # CI testing with custom k8s distribution (e.g., rke2)
 helm install coco . \
     -f values/profile-ci.yaml \
     --set kata-as-coco-runtime.k8sDistribution=rke2 \
-    --namespace kube-system
+    --namespace coco-system
 ```
 
 **Goal:** Replace the [Confidential Containers Operator](https://github.com/confidential-containers/operator) as the primary deployment method by the **0.18.0 release**.
@@ -57,28 +57,28 @@ The chart is published to `oci://ghcr.io/confidential-containers/charts/confiden
 **Basic installation for x86_64:**
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 **For s390x:**
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-s390x.yaml \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 **For aarch64:**
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-aarch64.yaml \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 **For peer-pods:**
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-remote.yaml \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 ### Detailed Installation Instructions
@@ -163,7 +163,7 @@ The available RuntimeClasses depend on the architecture:
 
 # Check the daemonset
 
-kubectl get daemonset -n kube-system
+kubectl get daemonset -n coco-system
 
 # List available RuntimeClasses
 
@@ -259,14 +259,14 @@ The chart supports installing a custom containerd binary from a tarball before d
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set customContainerd.enabled=true \
   --set customContainerd.tarballUrl=https://example.com/containerd-1.7.0-linux-amd64.tar.gz \
-  --namespace kube-system
+  --namespace coco-system
 
 # Install with custom containerd for s390x
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-s390x.yaml \
   --set customContainerd.enabled=true \
   --set customContainerd.tarballUrl=https://example.com/containerd-1.7.0-linux-s390x.tar.gz \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 **Example (Multi-Architecture/Heterogeneous Cluster):**
@@ -276,7 +276,7 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
   --set customContainerd.enabled=true \
   --set customContainerd.tarballUrls.amd64=https://example.com/containerd-1.7.0-linux-amd64.tar.gz \
   --set customContainerd.tarballUrls.arm64=https://example.com/containerd-1.7.0-linux-arm64.tar.gz \
-  --namespace kube-system
+  --namespace coco-system
 
 # Or using a custom values file
 cat <<EOF > custom-containerd.yaml
@@ -290,7 +290,7 @@ EOF
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f custom-containerd.yaml \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 **Important Notes:**
@@ -333,7 +333,7 @@ These files can be referenced directly via URL when installing from the OCI regi
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-s390x.yaml \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 ### How It Works
@@ -350,7 +350,7 @@ Support for upgrading is coming soon
 ## Uninstallation
 
 ```bash
-helm uninstall coco --namespace kube-system
+helm uninstall coco --namespace coco-system
 ```
 
 The uninstall command is the same regardless of whether you installed from the OCI registry or locally.

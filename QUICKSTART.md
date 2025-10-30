@@ -19,7 +19,7 @@ The chart is published to the OCI registry at `oci://ghcr.io/confidential-contai
 
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 **What you get:**
@@ -33,7 +33,7 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-s390x.yaml \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 **What you get:**
@@ -45,7 +45,7 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-aarch64.yaml \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 **What you get:**
@@ -56,7 +56,7 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-remote.yaml \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 **What you get:**
@@ -75,18 +75,18 @@ cd charts
 ./scripts/update-dependencies.sh
 
 # Install for your architecture
-helm install coco . --namespace kube-system  # x86_64
+helm install coco . --namespace coco-system  # x86_64
 # OR
-helm install coco . -f values/kata-s390x.yaml --namespace kube-system  # s390x
+helm install coco . -f values/kata-s390x.yaml --namespace coco-system  # s390x
 # OR
-helm install coco . -f values/kata-aarch64.yaml --namespace kube-system  # aarch64
+helm install coco . -f values/kata-aarch64.yaml --namespace coco-system  # aarch64
 ```
 
 ## Verify Installation
 
 ```bash
 # Check the daemonset is running
-kubectl get daemonset -n kube-system
+kubectl get daemonset -n coco-system
 
 # List available RuntimeClasses
 kubectl get runtimeclass
@@ -143,14 +143,14 @@ You can combine architecture values files (with `-f`) with `--set` flags for cus
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.env.debug=true \
-  --namespace kube-system
+  --namespace coco-system
 
 # For s390x
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-s390x.yaml \
   --set kata-as-coco-runtime.env.debug=true \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 ### Deploy on Specific Nodes (Node Selector)
@@ -161,14 +161,14 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.nodeSelector."node-role\.kubernetes\.io/worker"="" \
-  --namespace kube-system
+  --namespace coco-system
 
 # s390x - deploy on nodes with custom label
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-s390x.yaml \
   --set kata-as-coco-runtime.nodeSelector."confidential-computing"="enabled" \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 ### Custom Image Pull Policy
@@ -180,7 +180,7 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-s390x.yaml \
   --set kata-as-coco-runtime.imagePullPolicy=IfNotPresent \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 ### Private Registry with Image Pull Secrets
@@ -193,14 +193,14 @@ kubectl create secret docker-registry my-registry-secret \
   --docker-server=my-registry.example.com \
   --docker-username=myuser \
   --docker-password=mypassword \
-  --namespace kube-system
+  --namespace coco-system
 
 # Reference it in the installation
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-s390x.yaml \
   --set-json 'kata-as-coco-runtime.imagePullSecrets=[{"name":"my-registry-secret"}]' \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 ### Different Kubernetes Distribution
@@ -211,14 +211,14 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.k8sDistribution=k3s \
-  --namespace kube-system
+  --namespace coco-system
 
 # For RKE2 on s390x
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-s390x.yaml \
   --set kata-as-coco-runtime.k8sDistribution=rke2 \
-  --namespace kube-system
+  --namespace coco-system
 
 # Supported: k8s (default), k3s, rke2, k0s, microk8s
 
@@ -235,7 +235,7 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
   --set kata-as-coco-runtime.env.debug=true \
   --set kata-as-coco-runtime.nodeSelector."node-role\.kubernetes\.io/worker"="" \
   --set kata-as-coco-runtime.k8sDistribution=k3s \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 ### Custom Shims (x86_64 example - SNP and TDX only)
@@ -244,7 +244,7 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.env.shims="qemu-snp qemu-tdx qemu-coco-dev" \
   --set kata-as-coco-runtime.env.snapshotterHandlerMapping="qemu-snp:nydus\,qemu-tdx:nydus\,qemu-coco-dev:nydus" \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 ### Custom Values File
@@ -272,7 +272,7 @@ Then install:
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f my-values.yaml \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 ## Advanced Configuration
@@ -291,7 +291,7 @@ Set which shim to use by default when none is specified in pod annotations (by d
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.env.defaultShim=qemu-tdx \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 #### Custom Installation Path
@@ -301,7 +301,7 @@ Override the installation prefix (by default, kata-deploy uses its built-in defa
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.env.installationPrefix=/opt/custom-kata \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 #### Multiple Installations
@@ -314,7 +314,7 @@ Enable multiple Kata installations on the same node with a suffix:
 
 helm install coco-test oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.env.multiInstallSuffix=/opt/kata-PR12345 \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 #### Custom Image Tag
@@ -324,7 +324,7 @@ Override the image tag (by default uses chart's appVersion):
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.image.tag=3.21.0 \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 #### RuntimeClass Management
@@ -337,13 +337,13 @@ Control creation of Kubernetes RuntimeClass resources:
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.env.createRuntimeClasses=false \
-  --namespace kube-system
+  --namespace coco-system
 
 # Create the default Kubernetes RuntimeClass
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.env.createDefaultRuntimeClass=true \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 #### Hypervisor Annotations
@@ -353,7 +353,7 @@ Enable specific annotations to be passed when launching containers:
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.env.allowedHypervisorAnnotations="io.katacontainers.*" \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 #### Proxy Configuration for Kata Agent
@@ -366,20 +366,20 @@ Configure proxy settings for the Kata agent:
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.env.agentHttpsProxy="https://proxy.example.com:8080" \
-  --namespace kube-system
+  --namespace coco-system
 
 # Set NO_PROXY
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.env.agentNoProxy="localhost,127.0.0.1,.svc" \
-  --namespace kube-system
+  --namespace coco-system
 
 # Combine both
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --set kata-as-coco-runtime.env.agentHttpsProxy="https://proxy.example.com:8080" \
   --set kata-as-coco-runtime.env.agentNoProxy="localhost,127.0.0.1" \
-  --namespace kube-system
+  --namespace coco-system
 ```
 
 ## Upgrading
@@ -389,7 +389,7 @@ Upgrades are not yet supported
 ## Uninstalling
 
 ```bash
-helm uninstall coco --namespace kube-system
+helm uninstall coco --namespace coco-system
 ```
 
 ## Troubleshooting
@@ -397,7 +397,7 @@ helm uninstall coco --namespace kube-system
 ### Check Helm Release Status
 
 ```bash
-helm status coco -n kube-system
+helm status coco -n coco-system
 ```
 
 ### View Helm Release Details
@@ -406,21 +406,21 @@ helm status coco -n kube-system
 
 # View all release information
 
-helm get all coco -n kube-system
+helm get all coco -n coco-system
 
 # View rendered manifests
 
-helm get manifest coco -n kube-system
+helm get manifest coco -n coco-system
 
 # View values used
 
-helm get values coco -n kube-system
+helm get values coco -n coco-system
 ```
 
 ### Check DaemonSet Logs
 
 ```bash
-kubectl logs -n kube-system -l name=kata-deploy
+kubectl logs -n coco-system -l name=kata-deploy
 ```
 
 ### Verify RuntimeClasses
@@ -446,14 +446,14 @@ helm show readme oci://ghcr.io/confidential-containers/charts/confidential-conta
 ### List Installed Charts
 
 ```bash
-helm list -n kube-system
+helm list -n coco-system
 ```
 
 ## Important Notes
 
 1. **Comma Escaping:** When using `--set` with values containing commas, escape them with `\,`
 2. **Node Selectors:** When setting node selectors with dots in the key, escape them: `node-role\.kubernetes\.io/worker`
-3. **Namespace:** All examples use `kube-system` namespace. Adjust as needed for your environment.
+3. **Namespace:** All examples use `coco-system` namespace. Adjust as needed for your environment.
 4. **Architecture:** The default architecture is x86_64. Other architectures must be explicitly specified.
 
 ## Next Steps

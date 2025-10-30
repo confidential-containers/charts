@@ -67,20 +67,20 @@ Categories & Commands:
   deployment wait-daemonset [OPTIONS]
       Wait for kata-deploy daemonset to become ready
       Options:
-        --namespace NAME          Namespace (default: kube-system)
+        --namespace NAME          Namespace (default: coco-system)
         --label SELECTOR          Label selector (default: name=kata-as-coco-runtime)
         --timeout TIME            Timeout (default: 15m)
 
   deployment verify-daemonset [OPTIONS]
       Verify daemonset status
       Options:
-        --namespace NAME          Namespace (default: kube-system)
+        --namespace NAME          Namespace (default: coco-system)
         --label SELECTOR          Label selector (default: name=kata-as-coco-runtime)
 
   deployment show-logs [OPTIONS]
       Show daemonset logs
       Options:
-        --namespace NAME          Namespace (default: kube-system)
+        --namespace NAME          Namespace (default: coco-system)
         --label SELECTOR          Label selector (default: name=kata-as-coco-runtime)
         --tail LINES              Number of lines (default: 50)
 
