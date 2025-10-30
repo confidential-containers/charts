@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common.sh"
 
 wait_daemonset() {
-    local namespace="kube-system" label="name=kata-as-coco-runtime" timeout="15m"
+    local namespace="coco-system" label="name=kata-as-coco-runtime" timeout="15m"
     
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -36,7 +36,7 @@ wait_daemonset() {
 }
 
 verify_daemonset() {
-    local namespace="kube-system" label="name=kata-as-coco-runtime"
+    local namespace="coco-system" label="name=kata-as-coco-runtime"
     
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -73,7 +73,7 @@ verify_daemonset() {
 }
 
 show_logs() {
-    local namespace="kube-system" label="name=kata-as-coco-runtime" tail="50"
+    local namespace="coco-system" label="name=kata-as-coco-runtime" tail="50"
     
     while [ $# -gt 0 ]; do
         case "$1" in

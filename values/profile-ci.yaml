@@ -4,10 +4,10 @@
 # from the kata-containers CI pipeline instead of stable releases.
 #
 # Usage:
-#   helm install coco . -f values/kata-remote.yaml -f values/profile-ci.yaml --namespace kube-system
+#   helm install coco . -f values/kata-remote.yaml -f values/profile-ci.yaml --namespace coco-system
 #
 # For different architectures, combine with architecture-specific values:
-#   helm install coco . -f values/kata-s390x.yaml -f values/profile-ci.yaml --namespace kube-system
+#   helm install coco . -f values/kata-s390x.yaml -f values/profile-ci.yaml --namespace coco-system
 #
 
 kata-as-coco-runtime:
