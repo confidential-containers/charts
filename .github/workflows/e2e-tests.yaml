@@ -143,9 +143,9 @@ jobs:
             k8s-distro: kubeadm-containerd-1.7
             image-pull-mode: experimental-force-guest-pull
             test-containerd-upgrade: true
-          ## CI Variant - Kubeadm with CRI-O
-          #- deployment-type: ci
-          #  k8s-distro: kubeadm-crio
+          # CI Variant - Kubeadm with CRI-O
+          - deployment-type: ci
+            k8s-distro: kubeadm-crio
           
           # Standard Deployment - K3s with both pull modes
           - deployment-type: standard
@@ -198,9 +198,9 @@ jobs:
             k8s-distro: kubeadm-containerd-1.7
             image-pull-mode: experimental-force-guest-pull
             test-containerd-upgrade: true
-          ## Standard Deployment - Kubeadm with CRI-O
-          #- deployment-type: standard
-          #  k8s-distro: kubeadm-crio
+          # Standard Deployment - Kubeadm with CRI-O
+          - deployment-type: standard
+            k8s-distro: kubeadm-crio
     
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -325,6 +325,11 @@ jobs:
 
           if [ "${{ matrix.image-pull-mode }}" = "experimental-force-guest-pull" ]; then
             ARGS="${ARGS} --set kata-as-coco-runtime.env.snapshotterHandlerMapping='' --set kata-as-coco-runtime.env.pullTypeMapping='' --set kata-as-coco-runtime.env._experimentalSetupSnapshotter='' --set kata-as-coco-runtime.env._experimentalForceGuestPull=qemu-coco-dev"
+          fi
+          
+          # For CRI-O, disable nydus-snapshotter since it's containerd-specific
+          if [ "${{ matrix.k8s-distro }}" = "kubeadm-crio" ]; then
+            ARGS="${ARGS} --set ${CHART_VARIANT}.env.snapshotterHandlerMapping='' --set ${CHART_VARIANT}.env._experimentalSetupSnapshotter=''"
           fi
           
           # Add containerd upgrade flags (only for containerd upgrade test)
@@ -797,7 +802,7 @@ jobs:
           echo "- ✅ Pod scheduling with Kata runtime" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Image pulling with containerd (nydus snapshotter)" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Image pulling with containerd (guest-pull mode)" >> $GITHUB_STEP_SUMMARY
-          #echo "- ✅ Image pulling with CRI-O" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Image pulling with CRI-O" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ CI variant (kata-containers-latest)" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Standard deployment (CoCo releases)" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Containerd upgrade and rollback" >> $GITHUB_STEP_SUMMARY
