@@ -215,17 +215,17 @@ The chart supports installing a custom containerd binary from a tarball before d
 - Using specific containerd versions not available in distribution repos
 - Development and CI/CD workflows
 
-|| Parameter | Description | Default |
-||-----------|-------------|---------|
-|| `customContainerd.enabled` | Enable custom containerd installation | `false` |
-|| `customContainerd.tarballUrl` | URL to containerd tarball (single-arch clusters) | `""` |
-|| `customContainerd.tarballUrls.amd64` | URL for amd64/x86_64 tarball (multi-arch clusters) | `""` |
-|| `customContainerd.tarballUrls.s390x` | URL for s390x tarball (multi-arch clusters) | `""` |
-|| `customContainerd.installPath` | Installation path on host | `/usr/local` |
-|| `customContainerd.image.repository` | Installer image (needs wget, tar, sh) | `docker.io/library/alpine` |
-|| `customContainerd.image.tag` | Installer image tag | `3.22` |
-|| `customContainerd.nodeSelector` | Node selector for installer | `{}` |
-|| `customContainerd.tolerations` | Tolerations for installer | `[{operator: Exists}]` |
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `customContainerd.enabled` | Enable custom containerd installation | `false` |
+| `customContainerd.tarballUrl` | URL to containerd tarball (single-arch clusters) | `""` |
+| `customContainerd.tarballUrls.amd64` | URL for amd64/x86_64 tarball (multi-arch clusters) | `""` |
+| `customContainerd.tarballUrls.s390x` | URL for s390x tarball (multi-arch clusters) | `""` |
+| `customContainerd.installPath` | Installation path on host | `/usr/local` |
+| `customContainerd.image.repository` | Installer image (needs wget, tar, sh) | `docker.io/library/alpine` |
+| `customContainerd.image.tag` | Installer image tag | `3.22` |
+| `customContainerd.nodeSelector` | Node selector for installer | `{}` |
+| `customContainerd.tolerations` | Tolerations for installer | `[{operator: Exists}]` |
 
 **Example (Single-Architecture Cluster):**
 ```bash
