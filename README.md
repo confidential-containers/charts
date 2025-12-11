@@ -12,16 +12,17 @@ To use the latest kata-containers build from the main branch for CI testing, use
 
 ```bash
 # Production installation
-helm install coco . --namespace coco-system
+helm install coco . --namespace coco-system --create-namespace
 
 # CI testing with latest build
-helm install coco . -f values/profile-ci.yaml --namespace coco-system
+helm install coco . -f values/profile-ci.yaml --namespace coco-system --create-namespace
 
 # CI testing with custom k8s distribution (e.g., rke2)
 helm install coco . \
     -f values/profile-ci.yaml \
     --set kata-as-coco-runtime.k8sDistribution=rke2 \
-    --namespace coco-system
+    --namespace coco-system \
+    --create-namespace
 ```
 
 **Goal:** Replace the [Confidential Containers Operator](https://github.com/confidential-containers/operator) as the primary deployment method by the **0.18.0 release**.
