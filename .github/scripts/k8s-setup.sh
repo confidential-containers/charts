@@ -58,7 +58,8 @@ install_containerd() {
 
 install_crio() {
     echo "📦 Installing CRI-O..."
-    local k8s_ver=$(curl -Ls https://dl.k8s.io/release/stable.txt | cut -d. -f-2)
+    # Pin to v1.34 because v1.35 has broken dependencies (kubernetes-cni >= 1.2.0 not installable)
+    local k8s_ver="v1.34"
     [ -z "$k8s_ver" ] && { echo "❌ Failed to determine K8s version"; exit 1; }
     
     local crio_ver="$k8s_ver"
@@ -88,7 +89,8 @@ EOF
 
 install_kubeadm_components() {
     echo "📦 Installing Kubernetes components..."
-    local k8s_ver=$(curl -Ls https://dl.k8s.io/release/stable.txt | cut -d. -f-2)
+    # Pin to v1.34 because v1.35 has broken dependencies (kubernetes-cni >= 1.2.0 not installable)
+    local k8s_ver="v1.34"
     curl -fsSL "https://pkgs.k8s.io/core:/stable:/${k8s_ver}/deb/Release.key" | sudo gpg --batch --yes --no-tty --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${k8s_ver}/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
