@@ -17,6 +17,10 @@ inputs:
     description: 'Container runtime version - only for kubeadm'
     required: false
     default: 'latest'
+  command:
+    description: 'Command to run (setup or cleanup)'
+    required: false
+    default: 'setup'
 runs:
   using: 'composite'
   steps:
@@ -27,23 +31,23 @@ runs:
       run: |
         case "${{ inputs.distribution }}" in
           kubeadm)
-            ${{ github.action_path }}/../../scripts/k8s-operations.sh setup kubeadm \
+            ${{ github.action_path }}/../../scripts/k8s-operations.sh ${{ inputs.command }} kubeadm \
               ${{ inputs.container-runtime }} \
               ${{ inputs.runtime-version }}
             ;;
           k3s)
-            ${{ github.action_path }}/../../scripts/k8s-operations.sh setup k3s \
+            ${{ github.action_path }}/../../scripts/k8s-operations.sh ${{ inputs.command }} k3s \
               ${{ inputs.extra-params }}
             ;;
           k0s)
-            ${{ github.action_path }}/../../scripts/k8s-operations.sh setup k0s \
+            ${{ github.action_path }}/../../scripts/k8s-operations.sh ${{ inputs.command }} k0s \
               ${{ inputs.extra-params }}
             ;;
           rke2)
-            ${{ github.action_path }}/../../scripts/k8s-operations.sh setup rke2
+            ${{ github.action_path }}/../../scripts/k8s-operations.sh ${{ inputs.command }} rke2
             ;;
           microk8s)
-            ${{ github.action_path }}/../../scripts/k8s-operations.sh setup microk8s
+            ${{ github.action_path }}/../../scripts/k8s-operations.sh ${{ inputs.command }} microk8s
             ;;
           *)
             echo "❌ Unknown distribution: ${{ inputs.distribution }}"

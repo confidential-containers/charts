@@ -91,6 +91,22 @@ Categories & Commands:
 
   deployment show-runtimeclass-details RUNTIMECLASS [RUNTIMECLASS...]
       Show RuntimeClass details
+
+=== CLEANUP CATEGORY ===
+  cleanup kubeadm
+      Cleanup kubeadm cluster and all components
+
+  cleanup k3s
+      Cleanup K3s distribution
+
+  cleanup k0s
+      Cleanup K0s distribution
+
+  cleanup rke2
+      Cleanup RKE2 distribution
+
+  cleanup microk8s
+      Cleanup MicroK8s distribution
 EOF
 }
 
@@ -106,6 +122,7 @@ if [ $# -lt 2 ]; then
     echo "  setup       - Setup Kubernetes distributions"
     echo "  pod         - Pod operations"
     echo "  deployment  - Deployment verification"
+    echo "  cleanup     - Cleanup Kubernetes clusters and components"
     echo ""
     echo "Run '$0 --help' for detailed help"
     exit 1
@@ -126,9 +143,12 @@ case "${CATEGORY}" in
     deployment)
         exec "${SCRIPT_DIR}/k8s-deployment-verification.sh" "${COMMAND}" "$@"
         ;;
+    cleanup)
+        exec "${SCRIPT_DIR}/k8s-cleanup.sh" "${COMMAND}" "$@"
+        ;;
     *)
         echo "Unknown category: ${CATEGORY}"
-        echo "Available categories: setup, pod, deployment"
+        echo "Available categories: setup, pod, deployment, cleanup"
         echo "Run '$0 --help' for detailed help"
         exit 1
         ;;

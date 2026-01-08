@@ -762,6 +762,24 @@ jobs:
           
           echo "✅ Cleanup verification complete - normal pods work correctly!"
 
+      - name: Cleanup Kubernetes cluster (for self-hosted runners, kubeadm with containerd)
+        if: always() && steps.should-run.outputs.should-run == 'true' && contains(matrix.environment.k8s-distro, 'kubeadm-containerd')
+        uses: ./.github/actions/setup-k8s
+        with:
+          distribution: kubeadm
+          command: cleanup
+
+      - name: Uninstall yq (for self-hosted runners)
+        if: always() && steps.should-run.outputs.should-run == 'true'
+        run: |
+          echo "🧹 Uninstalling yq..."
+          if which yq >/dev/null 2>&1; then
+            echo "yq found, uninstalling..."
+            sudo rm -rf $(which yq)
+            echo "✅ yq uninstalled"
+          else
+            echo "yq not found, skipping uninstall"
+          fi
 
   test-summary:
     name: E2E Test Summary

@@ -39,6 +39,13 @@ prepare_system_kubeadm() {
 
 install_containerd() {
     local version="${1:-latest}"
+    # Make sure the containerd is already installed via apt
+    # If so, remove it first (for self-hosted runners)
+    if apt list --installed | grep -q "containerd"; then
+        echo "🧹 Removing existing containerd installation..."
+        sudo apt-get remove -y containerd || true
+        sudo apt-get purge -y containerd || true
+    fi
     echo "📦 Installing containerd ${version}..."
     local arch=$(determine_arch)
     local api_url="https://api.github.com/repos/containerd/containerd/releases"
@@ -64,9 +71,17 @@ install_containerd() {
 
 install_crio() {
     echo "📦 Installing CRI-O..."
+    # Make sure the CRI-O is already installed via apt
+    # If so, remove it first (for self-hosted runners)
+    if apt list --installed | grep -q "cri-o"; then
+        echo "🧹 Removing existing CRI-O installation..."
+        sudo apt-get remove -y cri-o cri-tools || true
+        sudo apt-get purge -y cri-o cri-tools || true
+    fi
+
     local k8s_ver=$(curl -Ls https://dl.k8s.io/release/stable.txt | cut -d. -f-2)
     [ -z "$k8s_ver" ] && { echo "❌ Failed to determine K8s version"; exit 1; }
-    
+
     local crio_ver="$k8s_ver"
     if ! curl -fsSL --head "https://download.opensuse.org/repositories/isv:/cri-o:/stable:/${crio_ver}/deb/Release.key" >/dev/null 2>&1; then
         local api_url="https://api.github.com/repos/cri-o/cri-o/releases"
