@@ -14,16 +14,16 @@ retry_kubectl() {
     local attempt=1
     
     while [ $attempt -le $max_retries ]; do
-        if "$@" 2>&1; then
+        if "$@"; then
             return 0
         fi
         
         if [ $attempt -eq $max_retries ]; then
-            echo "❌ Command failed after $max_retries attempts: $*" >&2
+            echo "❌ Command failed after $max_retries attempts: \"$*\"" >&2
             return 1
         fi
         
-        echo "  Retry $attempt/$max_retries failed, waiting ${retry_delay}s..." >&2
+        echo "  Retry \"$*\" - $attempt/$max_retries failed, waiting ${retry_delay}s..." >&2
         sleep $retry_delay
         attempt=$((attempt + 1))
     done
