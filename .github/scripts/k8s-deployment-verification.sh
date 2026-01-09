@@ -57,6 +57,12 @@ verify_daemonset() {
     echo "DaemonSet: $ds_name"
     retry_kubectl kubectl get daemonset "$ds_name" -n "$namespace"
     
+    if retry_kubectl kubectl rollout status daemonset/"$ds_name" -n "$namespace" --timeout=180s; then
+        echo "✅ DaemonSet rolled out successfully"
+    else
+        echo "❌ DaemonSet not rolled out in 180 seconds"
+    fi
+
     local desired=$(retry_kubectl kubectl get daemonset "$ds_name" -n "$namespace" -o jsonpath='{.status.desiredNumberScheduled}')
     local ready=$(retry_kubectl kubectl get daemonset "$ds_name" -n "$namespace" -o jsonpath='{.status.numberReady}')
     
