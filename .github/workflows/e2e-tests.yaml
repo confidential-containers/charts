@@ -536,7 +536,7 @@ jobs:
             nodeName: ${NODE}
             containers:
             - name: reader
-              image: busybox:latest
+              image: quay.io/prometheus/busybox:latest
               command: ['sleep', '60']
               volumeMounts:
               - name: host-root
@@ -716,7 +716,7 @@ jobs:
           spec:
             containers:
             - name: test
-              image: quay.io/quay/busybox:latest
+              image: quay.io/prometheus/busybox:latest
               command: ['sh', '-c', 'echo "Hello from normal pod!" && sleep 10']
             restartPolicy: Never
           EOF

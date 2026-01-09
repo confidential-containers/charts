@@ -52,7 +52,7 @@ spec:
   runtimeClassName: $runtime_class
   containers:
   - name: test
-    image: quay.io/quay/busybox:latest
+    image: quay.io/prometheus/busybox:latest
     command: ['sh', '-c', 'echo "Hello from Kata Containers!" && sleep 30']
   restartPolicy: Never
 EOF
