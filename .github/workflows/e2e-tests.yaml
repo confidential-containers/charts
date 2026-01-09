@@ -255,11 +255,19 @@ jobs:
             --password-stdin
           echo "✅ Helm authenticated with ghcr.io"
 
+      - name: Determine architecture
+        if: steps.should-run.outputs.should-run == 'true'
+        run: |
+          ARCH=$(uname -m)
+          [[ "$ARCH" == "x86_64" ]] && ARCH="amd64" || true
+          echo "Detected architecture: ${ARCH}"
+          echo "ARCH=${ARCH}" >> $GITHUB_ENV
+
       - name: Install yq (for CI tests)
         if: steps.should-run.outputs.should-run == 'true' && matrix.environment.deployment-type == 'ci'
         run: |
           echo "📦 Installing yq for chart version override..."
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${ARCH}
           sudo chmod +x /usr/local/bin/yq
           yq --version
 
@@ -311,7 +319,7 @@ jobs:
           
           # Add containerd upgrade flags (only for containerd upgrade test)
           if [ "${{ matrix.environment.test-containerd-upgrade }}" == "true" ]; then
-            ARGS="${ARGS} --set customContainerd.enabled=true --set customContainerd.tarballUrl=https://github.com/containerd/containerd/releases/download/v2.0.0/containerd-2.0.0-linux-amd64.tar.gz"
+            ARGS="${ARGS} --set customContainerd.enabled=true --set customContainerd.tarballUrl=https://github.com/containerd/containerd/releases/download/v2.0.0/containerd-2.0.0-linux-${ARCH}.tar.gz"
           fi
           
           echo "args=${ARGS}" >> $GITHUB_OUTPUT

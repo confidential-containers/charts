@@ -10,6 +10,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "${SCRIPT_DIR}/common.sh"
 
+determine_arch() {
+    local arch=$(uname -m)
+    [[ "$arch" == "x86_64" ]] && arch="amd64" || true
+    echo "$arch"
+}
+
 free_disk_space() {
     echo "🧹 Removing unnecessary directories to free up disk space..."
     sudo rm -rf /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/lib/android /usr/share/dotnet
@@ -34,7 +40,7 @@ prepare_system_kubeadm() {
 install_containerd() {
     local version="${1:-latest}"
     echo "📦 Installing containerd ${version}..."
-    local arch=$(uname -m); [[ "$arch" == "x86_64" ]] && arch="amd64" || arch="arm64"
+    local arch=$(determine_arch)
     local api_url="https://api.github.com/repos/containerd/containerd/releases"
     local curl_auth=""; [ -n "${GH_TOKEN:-}" ] && curl_auth="-H Authorization: Bearer ${GH_TOKEN}"
     
@@ -124,7 +130,7 @@ install_flannel() {
 setup_kubectl() {
     local dist="$1"
     echo "🔧 Setting up kubectl for $dist..."
-    local arch=$(uname -m); [[ "$arch" == "x86_64" ]] && arch="amd64" || arch="arm64"
+    local arch=$(determine_arch)
     local ver=""
     
     case "$dist" in
