@@ -2,6 +2,10 @@
 
 Get started with Confidential Containers on your architecture in just a few commands!
 
+> **📢 This Helm chart is the official way to deploy Confidential Containers.**
+>
+> The [CoCo Operator](https://github.com/confidential-containers/operator) is deprecated. Please use this Helm chart for all new deployments.
+
 ## Prerequisites
 
 - Kubernetes 1.24+
@@ -447,6 +451,16 @@ helm list -n coco-system
 
 - **Advanced Configuration:** See `examples-custom-values.yaml`
 - **Full Documentation:** See `README.md`
+
+## Migrating from the Operator
+
+If you're currently using the CoCo Operator:
+
+1. Uninstall the operator following its documentation
+2. Install this Helm chart using the commands above
+3. Your RuntimeClasses will be recreated automatically
+
+The Helm chart provides equivalent functionality with simpler configuration.
 
 ## Getting Help
 

@@ -2,11 +2,25 @@
 
 Umbrella Helm chart for Confidential Containers. This chart deploys kata-containers runtime with confidential computing support for TEE technologies.
 
-## Project Status
+> **📢 This Helm chart is now the official and recommended way to deploy Confidential Containers.**
+>
+> The [Confidential Containers Operator](https://github.com/confidential-containers/operator) is **deprecated** and will no longer receive updates. All new deployments should use this Helm chart.
 
-⚠️ **Early Stage Development** - This Helm chart is in its primary development phase as part of the effort to provide an alternative deployment method for Confidential Containers.
+## Migration from Operator
 
-⚠️ **CI Testing:**
+If you're currently using the CoCo Operator, we recommend migrating to this Helm chart:
+
+1. **Uninstall the Operator**: Follow the operator's uninstall instructions
+2. **Install via Helm**: Use the installation commands below
+3. **Update your workflows**: Replace operator CRDs with Helm values
+
+The Helm chart provides the same functionality with:
+- Simpler installation and configuration
+- Better integration with GitOps workflows
+- Faster updates aligned with kata-containers releases
+- Support for multiple Kubernetes distributions (k3s, k0s, rke2, microk8s, kubeadm)
+
+## CI Testing
 
 To use the latest kata-containers build from the main branch for CI testing, use the CI profile:
 
@@ -24,14 +38,6 @@ helm install coco . \
     --namespace coco-system \
     --create-namespace
 ```
-
-**Goal:** Replace the [Confidential Containers Operator](https://github.com/confidential-containers/operator) as the primary deployment method by the **0.18.0 release**.
-
-**Current Focus:**
-- ✅ Core functionality and E2E testing
-- ✅ Multi k8s distribution support (eg, k0s, k3s, microk8s, kubeadm, rke2 support)
-- 🔄 Feature parity with Operator
-- 📋 See [Test Coverage & Roadmap](#test-coverage--roadmap) below for detailed progress
 
 ## Overview
 
@@ -373,12 +379,13 @@ See the [Confidential Containers contributing guide](https://github.com/confiden
 | **Image Pull Modes** | ✅ | nydus-snapshotter, experimental-force-guest-pull |
 | **Special Tests** | ✅ | Custom containerd |
 
-### Roadmap to 0.18.0
+### Roadmap
 
-- ✅ **Phase 1** (Current) - Comprehensive E2E test coverage, unified actions
-- 🔄 **Phase 2** - Feature parity verification, edge case testing, peer-pods support
-- 📋 **Phase 3** - Operator deprecation notice, migration guide
-- 📋 **Phase 4 (0.18.0)** - Operator replacement as primary method
+- ✅ **Phase 1** - Comprehensive E2E test coverage, unified actions
+- ✅ **Phase 2** - Feature parity verification, edge case testing
+- ✅ **Phase 3** - Operator deprecation, migration guide
+- 🔄 **Phase 4** - Peer-pods support, additional platform testing
+- 📋 **Phase 5** - Production hardening, documentation improvements
 
 ## License
 
