@@ -79,24 +79,6 @@ jobs:
         with:
           version: '3.14.0'
       
-      - name: Update Helm dependencies
-        run: |
-          echo "📦 Updating Helm dependencies..."
-          helm dependency update
-          echo "✅ Helm dependencies updated"
-          echo "📋 Dependencies will be included in the chart package"
-      
-      - name: Package Helm chart
-        run: |
-          echo "📦 Packaging Helm chart with dependencies..."
-          helm package . --destination .cr-release-packages
-          echo "✅ Helm chart packaged"
-          echo "📋 Package contents:"
-          ls -lh .cr-release-packages/
-          echo ""
-          echo "📋 Verifying package includes dependencies:"
-          tar -tzf .cr-release-packages/confidential-containers-*.tgz | head -20
-      
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -117,6 +99,24 @@ jobs:
           # Verify authentication
           echo "🔍 Verifying Helm registry configuration..."
           helm registry list || true
+      
+      - name: Update Helm dependencies
+        run: |
+          echo "📦 Updating Helm dependencies..."
+          helm dependency update
+          echo "✅ Helm dependencies updated"
+          echo "📋 Dependencies will be included in the chart package"
+      
+      - name: Package Helm chart
+        run: |
+          echo "📦 Packaging Helm chart with dependencies..."
+          helm package . --destination .cr-release-packages
+          echo "✅ Helm chart packaged"
+          echo "📋 Package contents:"
+          ls -lh .cr-release-packages/
+          echo ""
+          echo "📋 Verifying package includes dependencies:"
+          tar -tzf .cr-release-packages/confidential-containers-*.tgz | head -20
       
       - name: Push Helm chart to GHCR
         env:

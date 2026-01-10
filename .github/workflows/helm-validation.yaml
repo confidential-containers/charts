@@ -25,6 +25,16 @@ jobs:
         with:
           version: 'latest'
 
+      - name: Authenticate Helm with GitHub Container Registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔐 Authenticating Helm with GHCR..."
+          echo "${GITHUB_TOKEN}" | helm registry login ghcr.io \
+            --username ${{ github.actor }} \
+            --password-stdin
+          echo "✅ Helm authenticated with ghcr.io"
+
       - name: Update Helm dependencies
         run: |
           echo "📦 Updating Helm dependencies..."
@@ -112,6 +122,16 @@ jobs:
         uses: azure/setup-helm@v4
         with:
           version: 'latest'
+
+      - name: Authenticate Helm with GitHub Container Registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔐 Authenticating Helm with GHCR..."
+          echo "${GITHUB_TOKEN}" | helm registry login ghcr.io \
+            --username ${{ github.actor }} \
+            --password-stdin
+          echo "✅ Helm authenticated with ghcr.io"
 
       - name: Update Helm dependencies
         run: |

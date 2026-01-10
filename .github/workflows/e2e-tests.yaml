@@ -244,6 +244,17 @@ jobs:
         with:
           version: '3.13.1'
 
+      - name: Authenticate Helm with GitHub Container Registry
+        if: steps.should-run.outputs.should-run == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔐 Authenticating Helm with GHCR..."
+          echo "${GITHUB_TOKEN}" | helm registry login ghcr.io \
+            --username ${{ github.actor }} \
+            --password-stdin
+          echo "✅ Helm authenticated with ghcr.io"
+
       - name: Install yq (for CI tests)
         if: steps.should-run.outputs.should-run == 'true' && matrix.environment.deployment-type == 'ci'
         run: |

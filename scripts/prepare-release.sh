@@ -322,6 +322,20 @@ update_chart() {
     info "  kata-deploy version: ${new_kata_version}"
 }
 
+# Login to ghcr.io for pulling OCI helm charts
+login_to_ghcr() {
+    info "Logging in to ghcr.io..."
+    
+    # ghcr.io requires authentication even for public packages (rate limiting)
+    # Use gh CLI token which is already available since gh is a required tool
+    if gh auth token | helm registry login ghcr.io -u "$(gh api user --jq .login)" --password-stdin >/dev/null 2>&1; then
+        success "Logged in to ghcr.io"
+    else
+        warning "Could not login to ghcr.io - dependency update may fail"
+        warning "If you see 403 errors, ensure your gh CLI has the read:packages scope"
+    fi
+}
+
 # Update Helm dependencies
 update_dependencies() {
     info "Updating Helm dependencies..."
@@ -523,6 +537,9 @@ main() {
     
     # Update Chart.yaml
     update_chart "${new_chart_version}" "${latest_kata_version}"
+    
+    # Login to ghcr.io for OCI chart access
+    login_to_ghcr
     
     # Update dependencies
     update_dependencies
