@@ -394,8 +394,8 @@ This is an automated commit created by scripts/prepare-release.sh
 EOF
 )
     
-    # Commit changes (suppress output to avoid contaminating return value)
-    git commit -m "${commit_message}" >/dev/null 2>&1
+    # Commit changes with sign-off (suppress output to avoid contaminating return value)
+    git commit -s -m "${commit_message}" >/dev/null 2>&1
     
     success "Created commit on branch ${branch_name}"
     echo "${branch_name}"
