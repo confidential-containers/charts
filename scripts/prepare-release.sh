@@ -414,6 +414,29 @@ create_pull_request() {
     
     info "Creating pull request..."
     
+    # Get the origin owner for cross-fork PRs
+    # Extract owner from origin URL (handles both HTTPS and SSH formats)
+    local origin_url
+    origin_url=$(git remote get-url origin)
+    local origin_owner
+    origin_owner=$(echo "${origin_url}" | sed -E 's|.*github\.com[:/]([^/]+)/.*|\1|')
+    
+    # Get the upstream repo that gh is configured for
+    local upstream_repo
+    upstream_repo=$(gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null || echo "")
+    local upstream_owner
+    upstream_owner=$(echo "${upstream_repo}" | cut -d'/' -f1)
+    
+    # Determine the head reference for the PR
+    # If origin is different from the gh repo, use owner:branch format for cross-fork PR
+    local head_ref
+    if [ -n "${upstream_owner}" ] && [ "${origin_owner}" != "${upstream_owner}" ]; then
+        head_ref="${origin_owner}:${branch_name}"
+        info "Cross-fork PR detected: ${origin_owner} -> ${upstream_owner}"
+    else
+        head_ref="${branch_name}"
+    fi
+    
     local pr_body
     pr_body=$(cat <<EOF
 ## Release ${new_chart_version}
@@ -459,7 +482,7 @@ EOF
         --title "Release ${new_chart_version}" \
         --body "${pr_body}" \
         --base main \
-        --head "${branch_name}"; then
+        --head "${head_ref}"; then
         success "Pull request created successfully!"
         
         # Switch back to original branch
