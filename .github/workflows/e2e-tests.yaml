@@ -283,13 +283,17 @@ jobs:
           echo "Detected architecture: ${ARCH}"
           echo "ARCH=${ARCH}" >> $GITHUB_ENV
 
-      - name: Install yq (for CI tests)
-        if: steps.should-run.outputs.should-run == 'true' && matrix.environment.deployment-type == 'ci'
+      - name: Install yq
+        if: steps.should-run.outputs.should-run == 'true'
         run: |
-          echo "📦 Installing yq for chart version override..."
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${ARCH}
-          sudo chmod +x /usr/local/bin/yq
-          yq --version
+          if command -v yq >/dev/null 2>&1; then
+            echo "✅ yq already installed, skipping installation"
+          else
+            echo "📦 Installing yq for chart version override..."
+            sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${ARCH}
+            sudo chmod +x /usr/local/bin/yq
+            yq --version
+          fi
 
       - name: Update Helm dependencies
         if: steps.should-run.outputs.should-run == 'true'
