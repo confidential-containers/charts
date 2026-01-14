@@ -21,6 +21,10 @@ inputs:
     description: 'Command to run (setup or cleanup)'
     required: false
     default: 'setup'
+  k8s-version:
+    description: 'Kubernetes version (e.g., v1.29) - if not provided, will be fetched'
+    required: false
+    default: ''
 runs:
   using: 'composite'
   steps:
@@ -28,6 +32,7 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
+        K8S_VERSION: ${{ inputs.k8s-version }}
       run: |
         case "${{ inputs.distribution }}" in
           kubeadm)

@@ -79,8 +79,13 @@ install_crio() {
         sudo apt-get purge -y cri-o cri-tools || true
     fi
 
-    local k8s_ver=$(curl -Ls https://dl.k8s.io/release/stable.txt | cut -d. -f-2)
-    [ -z "$k8s_ver" ] && { echo "❌ Failed to determine K8s version"; exit 1; }
+    local k8s_ver="${K8S_VERSION:-}"
+    if [ -z "$k8s_ver" ]; then
+        echo "🔍 K8S_VERSION not set, fetching from upstream..."
+        k8s_ver=$(curl -Ls https://dl.k8s.io/release/stable.txt | cut -d. -f-2)
+        [ -z "$k8s_ver" ] && { echo "❌ Failed to determine K8s version"; exit 1; }
+    fi
+    echo "✅ Using Kubernetes version: $k8s_ver"
 
     local crio_ver="$k8s_ver"
     if ! curl -fsSL --head "https://download.opensuse.org/repositories/isv:/cri-o:/stable:/${crio_ver}/deb/Release.key" >/dev/null 2>&1; then
@@ -109,7 +114,14 @@ EOF
 
 install_kubeadm_components() {
     echo "📦 Installing Kubernetes components..."
-    local k8s_ver=$(curl -Ls https://dl.k8s.io/release/stable.txt | cut -d. -f-2)
+    local k8s_ver="${K8S_VERSION:-}"
+    if [ -z "$k8s_ver" ]; then
+        echo "🔍 K8S_VERSION not set, fetching from upstream..."
+        k8s_ver=$(curl -Ls https://dl.k8s.io/release/stable.txt | cut -d. -f-2)
+        [ -z "$k8s_ver" ] && { echo "❌ Failed to determine K8s version"; exit 1; }
+    fi
+    echo "✅ Using Kubernetes version: $k8s_ver"
+
     curl -fsSL "https://pkgs.k8s.io/core:/stable:/${k8s_ver}/deb/Release.key" | sudo gpg --batch --yes --no-tty --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${k8s_ver}/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 

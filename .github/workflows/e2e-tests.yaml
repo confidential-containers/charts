@@ -28,11 +28,24 @@ jobs:
     outputs:
       kata-deploy-version-changed: ${{ steps.check-appversion.outputs.changed }}
       templates-changed: ${{ steps.check-templates.outputs.changed }}
+      k8s-version: ${{ steps.get-k8s-version.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Get Kubernetes version
+        id: get-k8s-version
+        run: |
+          echo "🔍 Fetching latest stable Kubernetes version..."
+          K8S_VERSION=$(curl -Ls https://dl.k8s.io/release/stable.txt | cut -d. -f-2)
+          if ! echo "$K8S_VERSION" | grep -qE '^v[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+            echo "❌ Invalid Kubernetes version format: $K8S_VERSION (expected pattern: v1.35 or v1.35.0)"
+            exit 1
+          fi
+          echo "✅ Kubernetes version: $K8S_VERSION"
+          echo "version=$K8S_VERSION" >> $GITHUB_OUTPUT
 
       - name: Check if kata-deploy dependency version changed
         id: check-appversion
@@ -226,6 +239,7 @@ jobs:
         with:
           distribution: kubeadm
           container-runtime: containerd
+          k8s-version: ${{ needs.check-changes.outputs.k8s-version }}
           runtime-version: latest
       
       - name: Setup Kubernetes cluster (kubeadm with containerd 1.7)
@@ -235,6 +249,7 @@ jobs:
           distribution: kubeadm
           container-runtime: containerd
           runtime-version: "1.7"
+          k8s-version: ${{ needs.check-changes.outputs.k8s-version }}
       
       - name: Setup Kubernetes cluster (kubeadm with CRI-O)
         if: steps.should-run.outputs.should-run == 'true' && matrix.environment.k8s-distro == 'kubeadm-crio'
@@ -242,6 +257,7 @@ jobs:
         with:
           distribution: kubeadm
           container-runtime: crio
+          k8s-version: ${{ needs.check-changes.outputs.k8s-version }}
 
       - name: Determine k8s distribution name
         if: steps.should-run.outputs.should-run == 'true'
