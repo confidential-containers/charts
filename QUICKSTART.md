@@ -29,7 +29,8 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 **What you get:**
 - AMD SEV-SNP support (kata-qemu-snp)
 - Intel TDX support (kata-qemu-tdx)
-- NVIDIA GPU variants
+- NVIDIA GPU with SEV-SNP (kata-qemu-nvidia-gpu-snp)
+- NVIDIA GPU with TDX (kata-qemu-nvidia-gpu-tdx)
 - Development runtime (kata-qemu-coco-dev)
 
 #### For s390x (IBM Z)
@@ -53,7 +54,7 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 ```
 
 **What you get:**
-- remote runtime (peer-pods / Cloud API Adaptopr integration)
+- remote runtime (peer-pods / Cloud API Adaptor integration)
 
 ### Installing from Local Repository (Development)
 
@@ -473,7 +474,12 @@ The Helm chart provides equivalent functionality with simpler configuration.
 ### x86_64
 
 - Requires AMD or Intel processors with SEV-SNP or TDX support
-- GPU variants require NVIDIA GPU with appropriate drivers
+
+### x86_64 with NVIDIA GPU
+
+- Requires NVIDIA GPU
+- Use `kata-qemu-nvidia-gpu-snp` for AMD SEV-SNP + GPU
+- Use `kata-qemu-nvidia-gpu-tdx` for Intel TDX + GPU
 
 ### s390x
 

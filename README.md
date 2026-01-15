@@ -56,7 +56,7 @@ This chart includes:
 ### Quick Start
 
 The chart is published to `oci://ghcr.io/confidential-containers/charts/confidential-containers` and supports multiple architectures:
-- **x86_64**: Intel and AMD processors (default)
+- **x86_64**: Intel and AMD processors (default), includes NVIDIA GPU support
 - **s390x**: IBM Z mainframes
 - **peer-pods**: architecture independent
 
@@ -65,6 +65,8 @@ The chart is published to `oci://ghcr.io/confidential-containers/charts/confiden
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   --namespace coco-system
 ```
+
+This includes both standard TEE shims (snp, tdx, coco-dev) and NVIDIA GPU shims (nvidia-gpu-snp, nvidia-gpu-tdx) by default.
 
 **For s390x:**
 ```bash
@@ -135,6 +137,8 @@ The available RuntimeClasses depend on the architecture:
 - `kata-qemu-coco-dev-runtime-rs` - Development/testing runtime (Rust-based)
 - `kata-qemu-snp` - AMD SEV-SNP
 - `kata-qemu-tdx` - Intel TDX
+- `kata-qemu-nvidia-gpu-snp` - NVIDIA GPU with AMD SEV-SNP protection
+- `kata-qemu-nvidia-gpu-tdx` - NVIDIA GPU with Intel TDX protection
 
 #### s390x
 
@@ -294,7 +298,7 @@ The Helm chart supports multiple architectures with appropriate TEE technology s
 ### Architecture-Specific Values Files
 
 Architecture-specific kata runtime configurations are organized in the `values/` directory:
-- **x86_64** - Default configuration in `values.yaml` (Intel/AMD platforms)
+- **x86_64** - Default configuration in `values.yaml` (Intel/AMD platforms, includes NVIDIA GPU support)
 - `values/kata-s390x.yaml` - For IBM Z mainframes
 - `values/kata-remote.yaml` - For peer-pods
 

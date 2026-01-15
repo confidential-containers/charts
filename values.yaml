@@ -81,10 +81,6 @@ kata-as-coco-runtime:
   k8sDistribution: k8s
   debug: false
 
-  env:
-    # Set default shim for backward compatibility (structured format takes precedence)
-    defaultShim: "qemu-snp"
-
   # Deploy TEE-enabled runtime shims for x86_64
   # For other architectures, use the appropriate values file:
   #   - values/kata-s390x.yaml for IBM Z
@@ -150,6 +146,34 @@ kata-as-coco-runtime:
       containerd:
         snapshotter: nydus
         forceGuestPull: false
+      crio:
+        guestPull: true
+      agent:
+        httpsProxy: ""
+        noProxy: ""
+
+    # NVIDIA GPU shims with TEE protection
+    # These use experimental-force-guest-pull to match kata-containers configuration
+    qemu-nvidia-gpu-snp:
+      enabled: true
+      supportedArches:
+        - amd64
+      allowedHypervisorAnnotations: []
+      containerd:
+        forceGuestPull: true
+      crio:
+        guestPull: true
+      agent:
+        httpsProxy: ""
+        noProxy: ""
+
+    qemu-nvidia-gpu-tdx:
+      enabled: true
+      supportedArches:
+        - amd64
+      allowedHypervisorAnnotations: []
+      containerd:
+        forceGuestPull: true
       crio:
         guestPull: true
       agent:
