@@ -12,10 +12,10 @@
 
 kata-as-coco-runtime:
   image:
-    # CI image repository (built from main branch)
-    reference: "quay.io/kata-containers/kata-deploy-ci"
-    # Latest tag from CI builds
-    tag: "kata-containers-latest"
+    # CI image repository - testing with specific PR build
+    # PR: https://github.com/kata-containers/kata-containers/pull/12364
+    reference: "ghcr.io/kata-containers/kata-deploy-ci"
+    tag: "12372-2cf9f0a383a2be9cf9d525af63d3721af54b2989-amd64"
   # Enable debug logging for CI testing
   debug: true
   # Snapshotter configuration (using new structured format)
