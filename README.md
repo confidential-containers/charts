@@ -96,10 +96,13 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
   --create-namespace
 ```
 
+> [!NOTE]
+> Support for peer-pods requires installation using the [Cloud API Adaptor peer-pods helm charts](https://github.com/confidential-containers/cloud-api-adaptor/tree/main/src/cloud-api-adaptor/install/charts/peerpods) project.
+
 ### Detailed Installation Instructions
 
-For complete installation instructions, customization options, and troubleshooting, see **[QUICKSTART.md](QUICKSTART.md)
-**, which includes:
+For complete installation instructions, customization options, and troubleshooting, see [QUICKSTART.md](QUICKSTART.md),
+which includes:
 
 - Installation from OCI registry and local chart
 - Common customizations (debug logging, node selectors, image pull policy, private registries, k8s distributions)
@@ -174,6 +177,9 @@ The available RuntimeClasses depend on the architecture:
 | RuntimeClass  | Description |
 |---------------|-------------|
 | `kata-remote` | Peer-pods   |
+
+> [!NOTE]
+> Support for peer-pods requires installation using the [Cloud API Adaptor peer-pods helm charts](https://github.com/confidential-containers/cloud-api-adaptor/tree/main/src/cloud-api-adaptor/install/charts/peerpods) project.
 
 ### Verification
 

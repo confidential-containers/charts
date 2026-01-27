@@ -52,6 +52,9 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 
 #### For remote (peer-pods)
 
+> [!NOTE]
+> Support for peer-pods requires installation using the [Cloud API Adaptor peer-pods helm charts](https://github.com/confidential-containers/cloud-api-adaptor/tree/main/src/cloud-api-adaptor/install/charts/peerpods) project.
+
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
   -f https://raw.githubusercontent.com/confidential-containers/charts/main/values/kata-remote.yaml \
