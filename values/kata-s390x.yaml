@@ -17,8 +17,9 @@ kata-as-coco-runtime:
     setup: ["nydus"]
 
   # TEE (Trusted Execution Environment) shims configuration
-  # Only enable the shims we want to expose, explicitly disable all others
+  # Only enable the shims we want to expose
   shims:
+    disableAll: true
     # Enabled shims - TEE shims we want to expose
     qemu-se:
       enabled: true
@@ -77,25 +78,6 @@ kata-as-coco-runtime:
       agent:
         httpsProxy: ""
         noProxy: ""
-
-    # Kata runtimes that are not for TEE
-    clh:
-      enabled: false
-
-    cloud-hypervisor:
-      enabled: false
-
-    dragonball:
-      enabled: false
-
-    fc:
-      enabled: false
-
-    qemu:
-      enabled: false
-
-    qemu-runtime-rs:
-      enabled: false
 
   # RuntimeClasses configuration
   runtimeClasses:
