@@ -97,6 +97,31 @@ kata-as-coco-runtime:
     qemu-runtime-rs:
       enabled: false
 
+    # Disable x86_64-only shims
+    qemu-snp:
+      enabled: false
+
+    qemu-tdx:
+      enabled: false
+
+    qemu-snp-runtime-rs:
+      enabled: false
+
+    qemu-tdx-runtime-rs:
+      enabled: false
+
+    qemu-nvidia-gpu:
+      enabled: false
+
+    qemu-nvidia-gpu-snp:
+      enabled: false
+
+    qemu-nvidia-gpu-tdx:
+      enabled: false
+
+    qemu-cca:
+      enabled: false
+
   # RuntimeClasses configuration
   runtimeClasses:
     enabled: true

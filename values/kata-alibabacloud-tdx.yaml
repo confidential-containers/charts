@@ -69,6 +69,12 @@ kata-as-coco-runtime:
     qemu-nvidia-gpu-snp:
       enabled: false
 
+    qemu-snp-runtime-rs:
+      enabled: false
+
+    qemu-tdx-runtime-rs:
+      enabled: false
+
   # RuntimeClasses configuration
   runtimeClasses:
     enabled: true
