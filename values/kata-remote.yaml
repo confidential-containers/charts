@@ -9,6 +9,39 @@ kata-as-coco-runtime:
   imagePullPolicy: Always
   k8sDistribution: k8s
 
-  # Disable all local shims - peer-pods uses the remote shim only
   shims:
-    disableAll: true
+    qemu-snp:
+      enabled: false
+
+    qemu-tdx:
+      enabled: false
+
+    qemu-se:
+      enabled: false
+
+    qemu-se-runtime-rs:
+      enabled: false
+
+    qemu-coco-dev:
+      enabled: false
+
+    qemu-coco-dev-runtime-rs:
+      enabled: false
+
+    clh:
+      enabled: false
+
+    cloud-hypervisor:
+      enabled: false
+
+    dragonball:
+      enabled: false
+
+    fc:
+      enabled: false
+
+    qemu:
+      enabled: false
+
+    qemu-runtime-rs:
+      enabled: false

@@ -16,9 +16,8 @@ kata-as-coco-runtime:
     setup: ["nydus"]
 
   # TEE (Trusted Execution Environment) shims configuration
-  # Only enable the shims we want to expose
+  # Only enable the shims we want to expose, explicitly disable all others
   shims:
-    disableAll: true
     qemu-tdx:
       enabled: true
       supportedArches:
@@ -45,6 +44,30 @@ kata-as-coco-runtime:
       agent:
         httpsProxy: ""
         noProxy: ""
+
+    qemu-snp:
+      enabled: false
+
+    qemu-coco-dev-runtime-rs:
+      enabled: false
+
+    qemu-cca:
+      enabled: false
+
+    qemu-se:
+      enabled: false
+
+    qemu-se-runtime-rs:
+      enabled: false
+
+    qemu-nvidia-gpu:
+      enabled: false
+
+    qemu-nvidia-gpu-tdx:
+      enabled: false
+
+    qemu-nvidia-gpu-snp:
+      enabled: false
 
   # RuntimeClasses configuration
   runtimeClasses:
