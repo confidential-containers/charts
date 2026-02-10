@@ -97,6 +97,8 @@ jobs:
           echo "🔍 Testing remote (peer-pods) architecture..."
           helm template test-release . \
             -f values/kata-remote.yaml \
+            --set peerpods.provider=docker \
+            --set-json 'peerpods.providerConfigs={"docker":{}}' \
             > /tmp/remote-output.yaml
           echo "✅ remote template renders successfully"
 

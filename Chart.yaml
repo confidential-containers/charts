@@ -18,3 +18,7 @@ dependencies:
     version: "3.26.0"
     repository: "oci://ghcr.io/kata-containers/kata-deploy-charts"
     condition: kata-as-coco-runtime.enabled
+  - name: peerpods
+    version: "0.1.1"
+    repository: "oci://ghcr.io/confidential-containers/cloud-api-adaptor/charts"
+    condition: peerpods.enabled

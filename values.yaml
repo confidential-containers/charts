@@ -232,3 +232,8 @@ kata-as-coco-runtime:
   # Default shim per architecture
   defaultShim:
     amd64: qemu-snp
+
+# Peer Pods (Cloud API Adaptor) subchart
+# Disabled by default. Use values/kata-remote.yaml to enable.
+peerpods:
+  enabled: false

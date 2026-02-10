@@ -96,9 +96,6 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
   --create-namespace
 ```
 
-> [!NOTE]
-> Support for peer-pods requires installation using the [Cloud API Adaptor peer-pods helm charts](https://github.com/confidential-containers/cloud-api-adaptor/tree/main/src/cloud-api-adaptor/install/charts/peerpods) project.
-
 ### Detailed Installation Instructions
 
 For complete installation instructions, customization options, and troubleshooting, see [QUICKSTART.md](QUICKSTART.md),
@@ -130,6 +127,13 @@ which includes:
 
 The chart deploys architecture-appropriate TEE runtime shims. The kata-deploy daemonset will install the runtimes
 based on the specified architecture and underlying hardware capabilities.
+
+## Peer Pods
+
+This chart supports deploying [Peer Pods (Cloud API Adaptor)](https://github.com/confidential-containers/cloud-api-adaptor)
+as an optional subchart for running confidential workloads in cloud VMs.
+See [PEERPODS.md](PEERPODS.md) for prerequisites, installation, and
+provider configuration.
 
 ## Usage
 
@@ -177,9 +181,6 @@ The available RuntimeClasses depend on the architecture:
 | RuntimeClass  | Description |
 |---------------|-------------|
 | `kata-remote` | Peer-pods   |
-
-> [!NOTE]
-> Support for peer-pods requires installation using the [Cloud API Adaptor peer-pods helm charts](https://github.com/confidential-containers/cloud-api-adaptor/tree/main/src/cloud-api-adaptor/install/charts/peerpods) project.
 
 ### Verification
 
@@ -438,7 +439,7 @@ See the [Confidential Containers contributing guide](https://github.com/confiden
 - ✅ **Phase 1** - Comprehensive E2E test coverage, unified actions
 - ✅ **Phase 2** - Feature parity verification, edge case testing
 - ✅ **Phase 3** - Operator deprecation, migration guide
-- 🔄 **Phase 4** - Peer-pods support, additional platform testing
+- ✅ **Phase 4** - Peer-pods support, additional platform testing
 - 📋 **Phase 5** - Production hardening, documentation improvements
 
 ## License

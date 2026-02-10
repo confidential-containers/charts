@@ -129,6 +129,8 @@ jobs:
       fail-fast: false
       matrix:
         environment: [
+          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: remote                   },
+          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: remote                   },
           { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
           { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: k3s,                       image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
           { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: k0s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
@@ -291,6 +293,27 @@ jobs:
             --password-stdin
           echo "✅ Helm authenticated with ghcr.io"
 
+      - name: Install cert-manager (required for peerpods webhook)
+        if: steps.should-run.outputs.should-run == 'true' && matrix.environment.shim == 'remote'
+        run: |
+          echo "📦 Installing cert-manager..."
+          kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.17.2/cert-manager.yaml
+          echo "⏳ Waiting for cert-manager deployments..."
+          kubectl wait --timeout=120s -n cert-manager deployment/cert-manager --for=condition=available
+          kubectl wait --timeout=120s -n cert-manager deployment/cert-manager-webhook --for=condition=available
+          kubectl wait --timeout=120s -n cert-manager deployment/cert-manager-cainjector --for=condition=available
+          echo "✅ cert-manager is ready"
+
+      - name: Label worker nodes (required for peerpods)
+        if: steps.should-run.outputs.should-run == 'true' && matrix.environment.shim == 'remote'
+        run: |
+          echo "🏷️ Labeling nodes with node.kubernetes.io/worker..."
+          for node in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+            kubectl label node "$node" node.kubernetes.io/worker= --overwrite
+            echo "  Labeled: $node"
+          done
+          echo "✅ All nodes labeled"
+
       - name: Determine architecture
         if: steps.should-run.outputs.should-run == 'true'
         run: |
@@ -357,6 +380,21 @@ jobs:
             ARGS="${ARGS} --set kata-as-coco-runtime.snapshotter.setup=null --set kata-as-coco-runtime.shims.${SHIM}.containerd.snapshotter='' --set kata-as-coco-runtime.shims.${SHIM}.containerd.forceGuestPull=true"
           fi
           
+          # Add peerpods provider config (only for remote shim).
+          # Uses docker provider since it runs on standard GH runners.
+          # Provider values files (e.g. providers/docker.yaml) are bundled
+          # inside the peerpods subchart tgz and not directly accessible,
+          # so we pass the config inline via --set.
+          if [ "${{ matrix.environment.shim }}" == "remote" ]; then
+            ARGS="${ARGS} --set kata-as-coco-runtime.defaultShim.amd64=remote"
+            ARGS="${ARGS} --set peerpods.provider=docker"
+            # Docker provider requires the dev image (includes CGO bindings).
+            ARGS="${ARGS} --set peerpods.image.tag=dev-a5f492482236b9fc4a77088efe6b4c2159ae6a03"
+            ARGS="${ARGS} --set peerpods.providerConfigs.docker.DOCKER_HOST=unix:///var/run/docker.sock"
+            ARGS="${ARGS} --set peerpods.providerConfigs.docker.DOCKER_NETWORK_NAME=bridge"
+            ARGS="${ARGS} --set peerpods.providerConfigs.docker.DOCKER_PODVM_IMAGE=quay.io/confidential-containers/podvm-docker-image"
+          fi
+
           # Add containerd upgrade flags (only for containerd upgrade test)
           if [ "${{ matrix.environment.test-containerd-upgrade }}" == "true" ]; then
             ARGS="${ARGS} --set customContainerd.enabled=true --set customContainerd.tarballUrl=https://github.com/containerd/containerd/releases/download/v2.0.0/containerd-2.0.0-linux-${ARCH}.tar.gz"
@@ -378,18 +416,24 @@ jobs:
           
           # Detect architecture and select appropriate values file
           ARCH=$(uname -m)
-          case "$ARCH" in
-            x86_64)
-              VALUES_FILE="values.yaml"
-              ;;
-            s390x)
-              VALUES_FILE="values/kata-s390x.yaml"
-              ;;
-            *)
-              echo "❌ Unsupported architecture: $ARCH"
-              exit 1
-              ;;
-          esac
+          SHIM="${{ matrix.environment.shim }}"
+
+          if [ "$SHIM" = "remote" ]; then
+            VALUES_FILE="values/kata-remote.yaml"
+          else
+            case "$ARCH" in
+              x86_64)
+                VALUES_FILE="values.yaml"
+                ;;
+              s390x)
+                VALUES_FILE="values/kata-s390x.yaml"
+                ;;
+              *)
+                echo "❌ Unsupported architecture: $ARCH"
+                exit 1
+                ;;
+            esac
+          fi
           
           # Use shim from matrix
           RUNTIME_CLASS_SHIM="${{ matrix.environment.shim }}"
@@ -471,6 +515,59 @@ jobs:
           daemonset-timeout: 15m
           daemonset-label: ${{ steps.deployment-params.outputs.daemonset-label }}
 
+      - name: Verify peerpods deployment
+        if: steps.should-run.outputs.should-run == 'true' && matrix.environment.shim == 'remote'
+        run: |
+          echo "🔍 Verifying peerpods components..."
+
+          # kata-deploy reconfigures containerd after installing shims.
+          # On k3s, containerd is embedded so this restarts the entire
+          # k3s process, taking the API server offline temporarily.
+          # Wait for the API server to come back before checking pods.
+          echo "⏳ Waiting for API server to be ready..."
+          TIMEOUT=120
+          ELAPSED=0
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            if kubectl get --raw /readyz &>/dev/null; then
+              echo "✅ API server ready after ${ELAPSED}s"
+              break
+            fi
+            sleep 5
+            ELAPSED=$((ELAPSED + 5))
+          done
+          if [ $ELAPSED -ge $TIMEOUT ]; then
+            echo "❌ API server not ready after ${TIMEOUT}s"
+            exit 1
+          fi
+
+          echo "⏳ Waiting for cloud-api-adaptor DaemonSet..."
+          kubectl wait --timeout=180s -n coco-system pod -l app=cloud-api-adaptor --for=condition=ready || {
+            echo "❌ CAA DaemonSet not ready"
+            kubectl get pods -n coco-system -l app=cloud-api-adaptor
+            kubectl describe pods -n coco-system -l app=cloud-api-adaptor
+            exit 1
+          }
+          echo "✅ cloud-api-adaptor DaemonSet is ready"
+
+          echo "⏳ Waiting for peerpodctrl-controller-manager..."
+          kubectl wait --timeout=180s -n coco-system deployment/peerpodctrl-controller-manager --for=condition=available || {
+            echo "❌ peerpod-ctrl not available"
+            kubectl get deployment -n coco-system
+            exit 1
+          }
+          echo "✅ peerpodctrl-controller-manager is available"
+
+          echo "🔍 Checking MutatingWebhookConfiguration..."
+          if kubectl get mutatingwebhookconfigurations | grep -q peer-pods; then
+            echo "✅ peerpods webhook is registered"
+          else
+            echo "❌ peerpods webhook not found"
+            kubectl get mutatingwebhookconfigurations
+            exit 1
+          fi
+
+          echo "✅ All peerpods components verified"
+
       - name: Get new containerd version
         if: steps.should-run.outputs.should-run == 'true' && matrix.environment.test-containerd-upgrade
         id: new-containerd-version
@@ -519,7 +616,7 @@ jobs:
           echo "   To:   ${{ steps.new-containerd-version.outputs.version }}"
 
       - name: Run test pod
-        if: steps.should-run.outputs.should-run == 'true'
+        if: steps.should-run.outputs.should-run == 'true' && matrix.environment.shim != 'remote'
         uses: ./.github/actions/run-test-pod
         with:
           runtime-class: ${{ steps.deployment-params.outputs.first-runtime-class }}
