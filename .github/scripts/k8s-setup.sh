@@ -223,6 +223,40 @@ verify_cluster() {
     command -v crio >/dev/null 2>&1 && echo "crio: $(crio --version)" || true
 }
 
+# If the rendered containerd config (v3) does not import the drop-in dir, write
+# the full V3 template (from .github/scripts/containerd-config-v3.tmpl) with the
+# given import path and restart the service. This allows kata-deploy to use
+# drop-in configuration on k3s/rke2.
+# Args: containerd_dir (e.g. /var/lib/rancher/k3s/agent/etc/containerd),
+#       service_name (e.g. k3s or rke2-server).
+setup_containerd_v3_template_if_needed() {
+    local containerd_dir="$1"
+    local service_name="$2"
+    local template_file="${SCRIPT_DIR}/containerd-config-v3.tmpl"
+    local rendered_v3="${containerd_dir}/config-v3.toml"
+    local imports_path="${containerd_dir}/config-v3.toml.d/*.toml"
+
+    if sudo test -f "${rendered_v3}" && \
+       sudo grep -q 'config-v3\.toml\.d' "${rendered_v3}" 2>/dev/null; then
+        echo "✅ Containerd v3 config already imports drop-in dir"
+        return 0
+    fi
+
+    if [[ ! -f "${template_file}" ]]; then
+        echo "⚠️  Template not found: ${template_file}, skipping v3 template setup"
+        return 0
+    fi
+
+    echo "📝 Setting up containerd v3 template with drop-in imports..."
+    sudo mkdir -p "${containerd_dir}/config-v3.toml.d"
+    sed "s|__CONTAINERD_IMPORTS_PATH__|${imports_path}|g" "${template_file}" \
+        | sudo tee "${containerd_dir}/config-v3.toml.tmpl" > /dev/null
+    sudo systemctl restart "${service_name}"
+    echo "⏳ Waiting for ${service_name} to restart after v3 template setup..."
+    sleep 30
+    echo "✅ Containerd v3 template configured"
+}
+
 # Main setup commands
 setup_kubeadm() {
     local runtime="${1:-containerd}" version="${2:-latest}"
@@ -236,6 +270,8 @@ setup_k3s() {
     free_disk_space
     echo "📦 Installing K3s..." && curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644 ${1:-}
     echo "⏳ Waiting for K3s..." && sleep 120
+    setup_containerd_v3_template_if_needed \
+        "/var/lib/rancher/k3s/agent/etc/containerd" "k3s"
     setup_kubectl "k3s" && verify_cluster "k3s"
 }
 
@@ -254,6 +290,8 @@ setup_rke2() {
     echo "📦 Installing RKE2..." && curl -sfL https://get.rke2.io | sudo sh -
     sudo systemctl enable --now rke2-server.service
     echo "⏳ Waiting for RKE2..." && sleep 120
+    setup_containerd_v3_template_if_needed \
+        "/var/lib/rancher/rke2/agent/etc/containerd" "rke2-server"
     setup_kubectl "rke2" && verify_cluster "rke2"
 }
 

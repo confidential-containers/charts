@@ -652,6 +652,31 @@ jobs:
           echo "🗑️  Uninstalling chart: ${RELEASE_NAME}..."
           helm uninstall ${RELEASE_NAME} -n coco-system --wait --timeout 5m || true
           
+          # Wait for the Kubernetes API to recover after kata-deploy uninstall.
+          # On k3s/rke2, the SIGTERM cleanup restarts the CRI runtime which
+          # takes down the API temporarily.
+          api_wait=0
+          api_timeout=300
+          while [ "$api_wait" -lt "$api_timeout" ]; do
+            if kubectl get nodes --request-timeout=5s &>/dev/null; then
+              echo "Kubernetes API is available after uninstall"
+              break
+            fi
+            echo "Waiting for API to recover after uninstall... (${api_wait}s/${api_timeout}s)"
+            sleep 5
+            api_wait=$((api_wait + 5))
+          done
+          
+          if ! kubectl get nodes --request-timeout=5s &>/dev/null; then
+            echo "❌ API server did not recover within ${api_timeout}s after uninstall"
+            exit 1
+          fi
+          
+          # Retry uninstall to purge any stale helm release state that may
+          # remain when the first uninstall races with the API outage.
+          helm uninstall ${RELEASE_NAME} -n coco-system \
+            --ignore-not-found --wait --timeout 5m || true
+          
           # For containerd upgrade tests, verify rollback
           if [ "${{ matrix.environment.test-containerd-upgrade }}" == "true" ]; then
             echo ""
