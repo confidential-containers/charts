@@ -1,9 +1,9 @@
 dependencies:
 - name: kata-deploy
   repository: oci://ghcr.io/kata-containers/kata-deploy-charts
-  version: 3.26.0
+  version: 3.27.0
 - name: peerpods
-  repository: file://../cloud-api-adaptor/src/cloud-api-adaptor/install/charts/peerpods
-  version: 0.1.0-dev
-digest: sha256:b25ee58abf8d227968c24584762b865ac6ed137364a6e604e9468b10ec0c3d82
-generated: "2026-02-10T11:38:41.799950091-05:00"
+  repository: oci://ghcr.io/confidential-containers/cloud-api-adaptor/charts
+  version: 0.1.1
+digest: sha256:488f5eb5563c57e2d80ac8ab7b2915b75fa619a58390918b3a60bf9dbee7f3f9
+generated: "2026-03-05T10:26:16.491797289+01:00"
