@@ -4,6 +4,6 @@ dependencies:
   version: 3.28.0
 - name: peerpods
   repository: oci://ghcr.io/confidential-containers/cloud-api-adaptor/charts
-  version: 0.1.1
-digest: sha256:a2d811e402e241ff36f5e19ac5fad1bccd97ff91e8ce35f9afa8e0846d205498
-generated: "2026-03-23T08:23:27.845554407+01:00"
+  version: 0.1.3
+digest: sha256:76f3558afa2c07bbe4a88275fcf6b4e796e9edce2750f79a5cf149fcaa04b50a
+generated: "2026-03-26T09:17:04.812451867-04:00"
