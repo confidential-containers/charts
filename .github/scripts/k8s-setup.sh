@@ -122,16 +122,48 @@ install_kubeadm_components() {
     fi
     echo "✅ Using Kubernetes version: $k8s_ver"
 
-    curl -fsSL "https://pkgs.k8s.io/core:/stable:/${k8s_ver}/deb/Release.key" | sudo gpg --batch --yes --no-tty --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${k8s_ver}/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+    local major minor prev_version
+    major="${k8s_ver%%.*}"
+    minor="${k8s_ver##*.}"
+    if [[ "${minor}" -eq 0 ]]; then
+        echo "❌ Cannot fallback from ${k8s_ver} (minor version is 0)"
+        exit 1
+    fi
+    prev_version="${major}.$((minor - 1))"
 
-    cat <<EOF | sudo tee /etc/apt/preferences.d/kubernetes
-Package: kubelet kubeadm kubectl cri-tools kubernetes-cni
-Pin: origin pkgs.k8s.io
-Pin-Priority: 1000
-EOF
+    local version=""
+    local candidate
+    for candidate in "${k8s_ver}" "${prev_version}"; do
+        echo "🔍 Trying Kubernetes ${candidate}"
 
-    sudo apt-get update && sudo apt-get -y install kubeadm kubelet kubectl --allow-downgrades
+        curl -fsSL "https://pkgs.k8s.io/core:/stable:/${candidate}/deb/Release.key" \
+            | sudo gpg --batch --yes --no-tty --dearmor \
+            -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${candidate}/deb/ /" \
+            | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+        cat <<-EOF | sudo tee /etc/apt/preferences.d/kubernetes
+	Package: kubelet kubeadm kubectl cri-tools kubernetes-cni
+	Pin: origin pkgs.k8s.io
+	Pin-Priority: 1000
+	EOF
+
+        sudo apt-get update
+        if sudo apt-get -y install --dry-run kubeadm kubelet kubectl \
+            --allow-downgrades >/dev/null 2>&1; then
+            version="${candidate}"
+            break
+        fi
+        echo "⚠️  Kubernetes ${candidate} packages have unmet dependencies, trying previous minor version"
+    done
+
+    if [[ -z "${version}" ]]; then
+        echo "❌ Failed to find a Kubernetes version with installable packages (tried ${k8s_ver} and ${prev_version})"
+        exit 1
+    fi
+
+    echo "📦 Installing Kubernetes ${version}"
+    sudo apt-get -y install kubeadm kubelet kubectl --allow-downgrades
     sudo apt-mark hold kubeadm kubelet kubectl
     echo "✅ Kubernetes installed: $(kubeadm version -o short)"
 }
