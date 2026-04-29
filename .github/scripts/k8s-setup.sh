@@ -53,7 +53,10 @@ install_containerd() {
     
     local full_version
     if [ "$version" = "latest" ]; then
-        full_version=$(curl -sSf $curl_auth "$api_url" | jq -r '[.[]|select(.tag_name|contains("api/")|not)][0].tag_name//""' | sed 's/^v//')
+        # Pin "latest" to 2.2.x to avoid containerd 2.3.0+ which ships a v4
+        # config format that is not yet supported by our setup.
+        version="2.2"
+        full_version=$(curl -sSf $curl_auth "$api_url" | jq -r '[.[]|select(.tag_name|contains("api/")|not)][].tag_name' | grep "^v${version}\." | head -1 | sed 's/^v//')
     else
         full_version=$(curl -sSf $curl_auth "$api_url" | jq -r '[.[]|select(.tag_name|contains("api/")|not)][].tag_name' | grep "^v${version}\." | head -1 | sed 's/^v//')
     fi
