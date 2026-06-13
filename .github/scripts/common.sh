@@ -29,6 +29,21 @@ retry_kubectl() {
     done
 }
 
+# Convert a Kubernetes-style duration (e.g. "15m", "90s", "1h", or a plain
+# number meaning seconds) into an integer number of seconds. Used by the
+# job-mode polling loops that need a numeric deadline rather than a string the
+# way `kubectl wait --timeout` consumes it.
+# Usage: secs=$(duration_to_seconds "15m")
+duration_to_seconds() {
+    local duration="$1"
+    case "$duration" in
+        *h) echo $(( ${duration%h} * 3600 )) ;;
+        *m) echo $(( ${duration%m} * 60 )) ;;
+        *s) echo "${duration%s}" ;;
+        *)  echo "$duration" ;;
+    esac
+}
+
 # Retry wrapper for pod creation with transient failure handling
 # Retries pod creation and waiting up to 5 times on failure
 # This handles flaky network issues during image pulls inside the guest
