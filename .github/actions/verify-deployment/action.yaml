@@ -18,6 +18,10 @@ inputs:
     description: 'Label selector for kata-deploy daemonset (e.g., name=kata-as-coco-runtime or name=kata-as-coco-runtime-for-ci)'
     required: false
     default: 'name=kata-as-coco-runtime'
+  deployment-mode:
+    description: 'kata-deploy deployment mode: daemonset or job. In job mode there is no always-on DaemonSet; verification waits for the per-node install Jobs to label the node(s).'
+    required: false
+    default: 'daemonset'
 
 outputs:
   verification-status:
@@ -27,28 +31,31 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Wait for kata-deploy daemonset
+    - name: Wait for kata-deploy install
       shell: bash
       run: |
         ${{ github.action_path }}/../../scripts/k8s-operations.sh deployment wait-daemonset \
           --namespace ${{ inputs.namespace }} \
           --label ${{ inputs.daemonset-label }} \
-          --timeout ${{ inputs.daemonset-timeout }}
+          --timeout ${{ inputs.daemonset-timeout }} \
+          --deployment-mode ${{ inputs.deployment-mode }}
 
-    - name: Verify daemonset status
+    - name: Verify kata-deploy install status
       shell: bash
       run: |
         ${{ github.action_path }}/../../scripts/k8s-operations.sh deployment verify-daemonset \
           --namespace ${{ inputs.namespace }} \
-          --label ${{ inputs.daemonset-label }}
+          --label ${{ inputs.daemonset-label }} \
+          --deployment-mode ${{ inputs.deployment-mode }}
 
-    - name: Show daemonset logs
+    - name: Show kata-deploy logs
       shell: bash
       run: |
         ${{ github.action_path }}/../../scripts/k8s-operations.sh deployment show-logs \
           --namespace ${{ inputs.namespace }} \
           --label ${{ inputs.daemonset-label }} \
-          --tail 50
+          --tail 50 \
+          --deployment-mode ${{ inputs.deployment-mode }}
 
     - name: Verify RuntimeClasses
       id: verify

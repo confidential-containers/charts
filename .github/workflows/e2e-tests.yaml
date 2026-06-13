@@ -449,6 +449,28 @@ jobs:
           
           echo "values-file=${VALUES_FILE}" >> $GITHUB_OUTPUT
 
+          # Detect the kata-deploy deployment mode from the values file so the
+          # verification step knows whether to expect a DaemonSet or per-node
+          # install Jobs. We do NOT enforce "job" mode anywhere yet: this
+          # defaults to "daemonset" and only changes behaviour if a values file
+          # opts into deploymentMode: job.
+          DEPLOYMENT_MODE=$(yq eval '.kata-as-coco-runtime.deploymentMode // "daemonset"' "${VALUES_FILE}" 2>/dev/null || echo "daemonset")
+          if [ -z "${DEPLOYMENT_MODE}" ] || [ "${DEPLOYMENT_MODE}" = "null" ]; then
+            DEPLOYMENT_MODE="daemonset"
+          fi
+          echo "deployment-mode=${DEPLOYMENT_MODE}" >> $GITHUB_OUTPUT
+          echo "ℹ️  kata-deploy deployment mode: ${DEPLOYMENT_MODE}"
+
+          # In "job" mode the dispatcher's default node selector targets only
+          # worker (non-control-plane) nodes. CI clusters are typically
+          # single-node, where the only node carries the control-plane label, so
+          # clear the role filter to target every discovered node.
+          JOB_EXTRA_ARGS=""
+          if [ "${DEPLOYMENT_MODE}" = "job" ]; then
+            JOB_EXTRA_ARGS="--set-json kata-as-coco-runtime.job.nodeSelectorExpressions=[]"
+          fi
+          echo "job-extra-args=${JOB_EXTRA_ARGS}" >> $GITHUB_OUTPUT
+
           # Get all available shims from values.yaml using new structured format
           # Extract shim names where enabled=true from kata-as-coco-runtime.shims
           # yq outputs each shim on a separate line, so we collect them into a space-separated string
@@ -503,7 +525,7 @@ jobs:
           release-name: ${{ steps.deployment-params.outputs.release-name }}
           namespace: coco-system
           values-file: ${{ steps.deployment-params.outputs.values-file }}
-          extra-args: ${{ steps.helm-args.outputs.args }}
+          extra-args: ${{ steps.helm-args.outputs.args }} ${{ steps.deployment-params.outputs.job-extra-args }}
           wait-timeout: 15m
 
       - name: Verify deployment
@@ -514,6 +536,7 @@ jobs:
           expected-runtime-classes: ${{ steps.deployment-params.outputs.expected-runtimeclasses }}
           daemonset-timeout: 15m
           daemonset-label: ${{ steps.deployment-params.outputs.daemonset-label }}
+          deployment-mode: ${{ steps.deployment-params.outputs.deployment-mode }}
 
       - name: Verify peerpods deployment
         if: steps.should-run.outputs.should-run == 'true' && matrix.environment.shim == 'remote'

@@ -65,24 +65,29 @@ Categories & Commands:
 
 === DEPLOYMENT CATEGORY ===
   deployment wait-daemonset [OPTIONS]
-      Wait for kata-deploy daemonset to become ready
+      Wait for the kata-deploy install to complete
       Options:
         --namespace NAME          Namespace (default: coco-system)
         --label SELECTOR          Label selector (default: name=kata-as-coco-runtime)
         --timeout TIME            Timeout (default: 15m)
+        --deployment-mode MODE    daemonset or job (default: daemonset). In job
+                                  mode there is no always-on DaemonSet, so this
+                                  waits for a node to gain the kata-runtime label.
 
   deployment verify-daemonset [OPTIONS]
-      Verify daemonset status
+      Verify the kata-deploy install status
       Options:
         --namespace NAME          Namespace (default: coco-system)
         --label SELECTOR          Label selector (default: name=kata-as-coco-runtime)
+        --deployment-mode MODE    daemonset or job (default: daemonset)
 
   deployment show-logs [OPTIONS]
-      Show daemonset logs
+      Show kata-deploy logs
       Options:
         --namespace NAME          Namespace (default: coco-system)
         --label SELECTOR          Label selector (default: name=kata-as-coco-runtime)
         --tail LINES              Number of lines (default: 50)
+        --deployment-mode MODE    daemonset or job (default: daemonset)
 
   deployment verify-runtimeclasses RUNTIMECLASS [RUNTIMECLASS...]
       Verify RuntimeClasses exist
