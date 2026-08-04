@@ -30,11 +30,11 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 
 **What you get:**
 
-- AMD SEV-SNP support (`kata-qemu-snp`)
-- Intel TDX support (`kata-qemu-tdx`)
-- NVIDIA GPU with SEV-SNP (`kata-qemu-nvidia-gpu-snp`)
-- NVIDIA GPU with TDX (`kata-qemu-nvidia-gpu-tdx`)
-- Development runtime (`kata-qemu-coco-dev`)
+- AMD SEV-SNP support (`kata-qemu-snp-runtime-rs`)
+- Intel TDX support (`kata-qemu-tdx-runtime-rs`)
+- NVIDIA GPU with SEV-SNP (`kata-qemu-nvidia-gpu-snp-runtime-rs`)
+- NVIDIA GPU with TDX (`kata-qemu-nvidia-gpu-tdx-runtime-rs`)
+- Development runtime (`kata-qemu-coco-dev-runtime-rs`)
 
 #### For s390x (IBM Z)
 
@@ -103,7 +103,7 @@ kind: Pod
 metadata:
   name: confidential-pod-snp
 spec:
-  runtimeClassName: kata-qemu-snp
+  runtimeClassName: kata-qemu-snp-runtime-rs
   containers:
     - name: app
       image: nginx:latest
@@ -117,7 +117,7 @@ kind: Pod
 metadata:
   name: confidential-pod-tdx
 spec:
-  runtimeClassName: kata-qemu-tdx
+  runtimeClassName: kata-qemu-tdx-runtime-rs
   containers:
     - name: app
       image: nginx:latest
@@ -282,8 +282,8 @@ helm install coco oci://ghcr.io/confidential-containers/charts/confidential-cont
 
 ```bash
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
-  --set kata-as-coco-runtime.env.shims="qemu-snp qemu-tdx qemu-coco-dev" \
-  --set kata-as-coco-runtime.env.snapshotterHandlerMapping="qemu-snp:nydus\,qemu-tdx:nydus\,qemu-coco-dev:nydus" \
+  --set kata-as-coco-runtime.env.shims="qemu-snp-runtime-rs qemu-tdx-runtime-rs qemu-coco-dev-runtime-rs" \
+  --set kata-as-coco-runtime.env.snapshotterHandlerMapping="qemu-snp-runtime-rs:nydus\,qemu-tdx-runtime-rs:nydus\,qemu-coco-dev-runtime-rs:nydus" \
   --namespace coco-system \
   --create-namespace
 ```
@@ -335,7 +335,7 @@ appropriate shim):
 # Force TDX as the default shim on x86_64
 
 helm install coco oci://ghcr.io/confidential-containers/charts/confidential-containers \
-  --set kata-as-coco-runtime.env.defaultShim=qemu-tdx \
+  --set kata-as-coco-runtime.env.defaultShim=qemu-tdx-runtime-rs \
   --namespace coco-system \
   --create-namespace
 ```
@@ -515,8 +515,8 @@ The Helm chart provides equivalent functionality with simpler configuration.
 ### x86_64 with NVIDIA GPU
 
 - Requires NVIDIA GPU
-- Use `kata-qemu-nvidia-gpu-snp` for AMD SEV-SNP + GPU
-- Use `kata-qemu-nvidia-gpu-tdx` for Intel TDX + GPU
+- Use `kata-qemu-nvidia-gpu-snp-runtime-rs` for AMD SEV-SNP + GPU
+- Use `kata-qemu-nvidia-gpu-tdx-runtime-rs` for Intel TDX + GPU
 
 ### s390x
 

@@ -55,7 +55,7 @@ customContainerd:
 #
 # Advanced customizations (kata-deploy specific options):
 #   image.tag: Override image tag (uses chart's appVersion by default)
-#   env.defaultShim: "" (default) | "qemu-snp" | "qemu-tdx" | etc.
+#   env.defaultShim: "" (default) | "qemu-snp-runtime-rs" | "qemu-tdx-runtime-rs" | etc.
 #                    The default shim to use if `kata` is specified as the pod runtimeClass
 #   env.createRuntimeClasses: "true" (default) | "false"
 #                             Create Kubernetes RuntimeClass resources
@@ -91,10 +91,11 @@ kata-as-coco-runtime:
     setup: ["nydus"]
 
   # TEE (Trusted Execution Environment) shims configuration
-  # Only enable the shims we want to expose, explicitly disable all others
+  # Only enable the shims we want to expose, explicitly disable all others.
+  # Since Kata 4.0, runtime-rs is the default runtime.
   shims:
-    # Enabled shims - TEE shims we want to expose
-    qemu-snp:
+    # Enabled shims - runtime-rs TEE shims (default since Kata 4.0)
+    qemu-snp-runtime-rs:
       enabled: true
       supportedArches:
         - amd64
@@ -108,7 +109,7 @@ kata-as-coco-runtime:
         httpsProxy: ""
         noProxy: ""
 
-    qemu-tdx:
+    qemu-tdx-runtime-rs:
       enabled: true
       supportedArches:
         - amd64
@@ -154,7 +155,7 @@ kata-as-coco-runtime:
 
     # NVIDIA GPU shims with TEE protection
     # These use experimental-force-guest-pull to match kata-containers configuration
-    qemu-nvidia-gpu-snp:
+    qemu-nvidia-gpu-snp-runtime-rs:
       enabled: true
       supportedArches:
         - amd64
@@ -167,7 +168,7 @@ kata-as-coco-runtime:
         httpsProxy: ""
         noProxy: ""
 
-    qemu-nvidia-gpu-tdx:
+    qemu-nvidia-gpu-tdx-runtime-rs:
       enabled: true
       supportedArches:
         - amd64
@@ -180,7 +181,7 @@ kata-as-coco-runtime:
         httpsProxy: ""
         noProxy: ""
 
-    # Kata runtimes that are not for TEE
+    # Disabled shims - Go runtime variants and non-TEE runtimes 
     clh:
       enabled: false
 
@@ -199,16 +200,22 @@ kata-as-coco-runtime:
     qemu-runtime-rs:
       enabled: false
 
-    qemu-snp-runtime-rs:
+    qemu-snp:
       enabled: false
 
-    qemu-tdx-runtime-rs:
+    qemu-tdx:
       enabled: false
 
     qemu-cca:
       enabled: false
 
     qemu-nvidia-gpu:
+      enabled: false
+
+    qemu-nvidia-gpu-snp:
+      enabled: false
+
+    qemu-nvidia-gpu-tdx:
       enabled: false
 
     qemu-se:
@@ -231,7 +238,7 @@ kata-as-coco-runtime:
 
   # Default shim per architecture
   defaultShim:
-    amd64: qemu-snp
+    amd64: qemu-snp-runtime-rs
 
 # Peer Pods (Cloud API Adaptor) subchart
 # Disabled by default. Use values/kata-remote.yaml to enable.

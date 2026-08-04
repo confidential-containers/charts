@@ -30,7 +30,7 @@ Use confidential containers in your pods by specifying a RuntimeClass:
   metadata:
     name: my-pod
   spec:
-    runtimeClassName: kata-qemu-snp  # Choose appropriate RuntimeClass for your hardware
+    runtimeClassName: kata-qemu-snp-runtime-rs  # Choose appropriate RuntimeClass for your hardware
     containers:
     - name: app
       image: your-image:tag

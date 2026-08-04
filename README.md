@@ -146,7 +146,7 @@ kind: Pod
 metadata:
   name: confidential-pod
 spec:
-  runtimeClassName: kata-qemu-coco-dev  # Choose from available RuntimeClasses
+  runtimeClassName: kata-qemu-coco-dev-runtime-rs  # Choose from available RuntimeClasses
   containers:
     - name: app
       image: your-image:tag
@@ -158,21 +158,21 @@ The available RuntimeClasses depend on the architecture:
 
 #### x86_64
 
-| RuntimeClass                    | Description                              |
-|---------------------------------|------------------------------------------|
-| `kata-qemu-coco-dev`            | Development/testing runtime              |
-| `kata-qemu-coco-dev-runtime-rs` | Development/testing runtime (Rust-based) |
-| `kata-qemu-snp`                 | AMD SEV-SNP                              |
-| `kata-qemu-tdx`                 | Intel TDX                                |
-| `kata-qemu-nvidia-gpu-snp`      | NVIDIA GPU with AMD SEV-SNP protection   |
-| `kata-qemu-nvidia-gpu-tdx`      | NVIDIA GPU with Intel TDX protection     |
+| RuntimeClass                          | Description                              |
+|---------------------------------------|------------------------------------------|
+| `kata-qemu-snp-runtime-rs`            | AMD SEV-SNP                              |
+| `kata-qemu-tdx-runtime-rs`            | Intel TDX                                |
+| `kata-qemu-coco-dev`                  | Development/testing runtime              |
+| `kata-qemu-coco-dev-runtime-rs`       | Development/testing runtime (Rust-based) |
+| `kata-qemu-nvidia-gpu-snp-runtime-rs` | NVIDIA GPU with AMD SEV-SNP protection   |
+| `kata-qemu-nvidia-gpu-tdx-runtime-rs` | NVIDIA GPU with Intel TDX protection     |
 
 #### s390x
 
 | RuntimeClass                    | Description                              |
 |---------------------------------|------------------------------------------|
 | `kata-qemu-coco-dev`            | Development/testing runtime              |
-| `kata-qemu-coco-dev-runtime-rs` | Development/testing runtime (Rust-based) |
+| `kata-qemu-coco-dev-runtime-rs` | Development/testing runtime(Rust-based)  |
 | `kata-qemu-se`                  | IBM Secure Execution                     |
 | `kata-qemu-se-runtime-rs`       | IBM Secure Execution (Rust-based)        |
 

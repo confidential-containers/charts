@@ -13,7 +13,7 @@ kata-as-coco-runtime:
     setup: ["nydus"]
 
   shims:
-    qemu-coco-dev:
+    qemu-coco-dev-runtime-rs:
       enabled: true
       supportedArches:
         - amd64
@@ -45,12 +45,12 @@ architecture: x86_64
 
 kata-as-coco-runtime:
   debug: false
-  
+
   snapshotter:
     setup: ["nydus"]
 
   shims:
-    qemu-snp:
+    qemu-snp-runtime-rs:
       enabled: true
       supportedArches:
         - amd64
@@ -63,7 +63,7 @@ kata-as-coco-runtime:
         httpsProxy: "http://proxy.example.com:8080"
         noProxy: "localhost,127.0.0.1"
 
-    qemu-tdx:
+    qemu-tdx-runtime-rs:
       enabled: true
       supportedArches:
         - amd64
@@ -76,7 +76,7 @@ kata-as-coco-runtime:
         httpsProxy: "http://proxy.example.com:8080"
         noProxy: "localhost,127.0.0.1"
 
-    qemu-coco-dev:
+    qemu-coco-dev-runtime-rs:
       enabled: true
       supportedArches:
         - amd64
@@ -93,19 +93,20 @@ kata-as-coco-runtime:
 ---
 # Example 3: x86_64 with custom image and selected shims
 # Note: qemu-nvidia-gpu-snp and qemu-nvidia-gpu-tdx are not in our standard set
-# This example shows the shims we expose: qemu-snp, qemu-tdx, qemu-coco-dev
+# This example shows the runtime-rs shims we expose:
+# qemu-snp-runtime-rs, qemu-tdx-runtime-rs, qemu-coco-dev-runtime-rs
 architecture: x86_64
 
 kata-as-coco-runtime:
   image:
     reference: quay.io/kata-containers/kata-deploy
   debug: true
-  
+
   snapshotter:
     setup: ["nydus"]
-  
+
   shims:
-    qemu-snp:
+    qemu-snp-runtime-rs:
       enabled: true
       supportedArches:
         - amd64
@@ -114,8 +115,8 @@ kata-as-coco-runtime:
         forceGuestPull: false
       crio:
         guestPull: true
-  
-    qemu-tdx:
+
+    qemu-tdx-runtime-rs:
       enabled: true
       supportedArches:
         - amd64
@@ -124,8 +125,8 @@ kata-as-coco-runtime:
         forceGuestPull: false
       crio:
         guestPull: true
-  
-    qemu-coco-dev:
+
+    qemu-coco-dev-runtime-rs:
       enabled: true
       supportedArches:
         - amd64
@@ -153,7 +154,7 @@ kata-as-coco-runtime:
     setup: ["nydus"]
 
   shims:
-    qemu-snp:
+    qemu-snp-runtime-rs:
       enabled: true
       supportedArches:
         - amd64

@@ -43,7 +43,7 @@ kata-as-coco-runtime:
     qemu-runtime-rs:
       enabled: false
 
-  # Default shim per architecture
+  # Default shim per architecture (runtime-rs since Kata 4.0)
   defaultShim:
-    amd64: qemu-coco-dev
-    s390x: qemu-coco-dev
+    amd64: qemu-coco-dev-runtime-rs
+    s390x: qemu-coco-dev-runtime-rs
