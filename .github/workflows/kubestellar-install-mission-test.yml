@@ -1,0 +1,177 @@
+# Validates the KubeStellar Console install mission for Confidential Containers.
+# This test ensures the documented helm install steps remain functional as the
+# chart evolves.  It spins up a kind cluster, installs the chart using the OCI
+# registry, verifies the deployment reaches a healthy state, then cleans up.
+#
+# Reference: https://github.com/confidential-containers/confidential-containers/issues/354
+
+name: KubeStellar Install Mission Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Chart.yaml"
+      - "values.yaml"
+      - "values/**"
+      - "templates/**"
+  schedule:
+    # Weekly on Sundays at 06:00 UTC
+    - cron: "0 6 * * 0"
+  workflow_dispatch:
+
+# Cancel redundant runs for the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ---------------------------------------------------------------------------
+# Constants – keep magic numbers out of the steps.
+# ---------------------------------------------------------------------------
+env:
+  # Kubernetes / kind
+  KIND_CLUSTER_NAME: coco-mission-test
+  KIND_NODE_IMAGE: kindest/node:v1.31.6
+  # Helm install
+  CHART_OCI_REPO: oci://ghcr.io/confidential-containers/charts/confidential-containers
+  HELM_RELEASE_NAME: coco
+  INSTALL_NAMESPACE: confidential-containers
+  # Timeouts (seconds)
+  HELM_INSTALL_TIMEOUT_S: 300
+  POD_READY_TIMEOUT_S: 180
+  POD_READY_POLL_INTERVAL_S: 10
+
+jobs:
+  install-mission:
+    name: Validate Install Mission
+    runs-on: ubuntu-22.04
+    steps:
+      # ------------------------------------------------------------------
+      # 1. Checkout (needed only for workflow file itself)
+      # ------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------------
+      # 2. Create a kind cluster
+      # ------------------------------------------------------------------
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: ${{ env.KIND_CLUSTER_NAME }}
+          node_image: ${{ env.KIND_NODE_IMAGE }}
+          wait: 120s
+
+      - name: Verify cluster is ready
+        run: |
+          kubectl cluster-info
+          kubectl get nodes -o wide
+          echo "Cluster is ready."
+
+      # ------------------------------------------------------------------
+      # 3. Set up Helm
+      # ------------------------------------------------------------------
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: latest
+
+      # ------------------------------------------------------------------
+      # 4. Run the install mission steps (mirrors the documented flow)
+      # ------------------------------------------------------------------
+      - name: Create install namespace
+        run: |
+          kubectl create namespace "${INSTALL_NAMESPACE}"
+          echo "Namespace ${INSTALL_NAMESPACE} created."
+
+      - name: Helm install confidential-containers chart
+        run: |
+          helm install "${HELM_RELEASE_NAME}" "${CHART_OCI_REPO}" \
+            --namespace "${INSTALL_NAMESPACE}" \
+            --timeout "${HELM_INSTALL_TIMEOUT_S}s" \
+            --wait \
+            --set kata-as-coco-runtime.k8sDistribution=k8s
+          echo "Helm install completed."
+
+      # ------------------------------------------------------------------
+      # 5. Validate the deployment
+      # ------------------------------------------------------------------
+      - name: Wait for pods to be ready
+        run: |
+          echo "Waiting up to ${POD_READY_TIMEOUT_S}s for pods in ${INSTALL_NAMESPACE}..."
+          ELAPSED=0
+          while true; do
+            # Count total vs ready pods (excluding Completed/Succeeded)
+            TOTAL=$(kubectl get pods -n "${INSTALL_NAMESPACE}" --no-headers 2>/dev/null \
+              | grep -cv 'Completed\|Succeeded' || true)
+            READY=$(kubectl get pods -n "${INSTALL_NAMESPACE}" --no-headers 2>/dev/null \
+              | grep -c 'Running' || true)
+
+            echo "  [${ELAPSED}s] Pods: ${READY}/${TOTAL} running"
+
+            if [ "${TOTAL}" -gt 0 ] && [ "${READY}" -eq "${TOTAL}" ]; then
+              echo "All ${TOTAL} pod(s) are running."
+              break
+            fi
+
+            if [ "${ELAPSED}" -ge "${POD_READY_TIMEOUT_S}" ]; then
+              echo "Timed out waiting for pods."
+              kubectl get pods -n "${INSTALL_NAMESPACE}" -o wide
+              kubectl describe pods -n "${INSTALL_NAMESPACE}"
+              exit 1
+            fi
+
+            sleep "${POD_READY_POLL_INTERVAL_S}"
+            ELAPSED=$((ELAPSED + POD_READY_POLL_INTERVAL_S))
+          done
+
+      - name: Validate Helm release status
+        run: |
+          STATUS=$(helm status "${HELM_RELEASE_NAME}" \
+            --namespace "${INSTALL_NAMESPACE}" -o json | jq -r '.info.status')
+          echo "Helm release status: ${STATUS}"
+          if [ "${STATUS}" != "deployed" ]; then
+            echo "Expected 'deployed', got '${STATUS}'."
+            exit 1
+          fi
+
+      - name: Show deployment summary
+        if: always()
+        run: |
+          echo "--- Helm releases ---"
+          helm list --namespace "${INSTALL_NAMESPACE}"
+          echo ""
+          echo "--- Pods ---"
+          kubectl get pods -n "${INSTALL_NAMESPACE}" -o wide
+          echo ""
+          echo "--- RuntimeClasses ---"
+          kubectl get runtimeclass 2>/dev/null || echo "(none found)"
+          echo ""
+          echo "--- Events (last 50) ---"
+          kubectl get events -n "${INSTALL_NAMESPACE}" \
+            --sort-by='.lastTimestamp' 2>/dev/null | tail -50 || true
+
+      # ------------------------------------------------------------------
+      # 6. Cleanup
+      # ------------------------------------------------------------------
+      - name: Uninstall Helm release
+        if: always()
+        run: |
+          helm uninstall "${HELM_RELEASE_NAME}" \
+            --namespace "${INSTALL_NAMESPACE}" \
+            --wait --timeout 120s 2>/dev/null || true
+          echo "Helm release uninstalled."
+
+      - name: Delete namespace
+        if: always()
+        run: |
+          kubectl delete namespace "${INSTALL_NAMESPACE}" \
+            --wait=false 2>/dev/null || true
+          echo "Namespace deletion initiated."
+
+      - name: Delete kind cluster
+        if: always()
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: ${{ env.KIND_CLUSTER_NAME }}
+          wait: 0s
