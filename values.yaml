@@ -81,6 +81,8 @@ kata-as-coco-runtime:
   k8sDistribution: k8s
   debug: false
 
+  deploymentMode: daemonset
+
   # Deploy TEE-enabled runtime shims for x86_64
   # For other architectures, use the appropriate values file:
   #   - values/kata-s390x.yaml for IBM Z

@@ -18,6 +18,9 @@ kata-as-coco-runtime:
     tag: "kata-containers-latest"
   # Enable debug logging for CI testing
   debug: true
+
+  deploymentMode: daemonset
+
   # Snapshotter configuration (using new structured format)
   # This will be merged with the snapshotter config from base values files
   snapshotter:

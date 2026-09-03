@@ -13,6 +13,8 @@ kata-as-coco-runtime:
   imagePullPolicy: Always
   k8sDistribution: k8s
 
+  deploymentMode: daemonset
+
   defaultShim:
     amd64: remote
     arm64: remote
