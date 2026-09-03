@@ -12,6 +12,8 @@ kata-as-coco-runtime:
   k8sDistribution: k8s
   debug: false
 
+  deploymentMode: daemonset
+
   # Snapshotter configuration
   snapshotter:
     setup: ["nydus"]
