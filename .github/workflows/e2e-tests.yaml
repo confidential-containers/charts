@@ -1033,6 +1033,8 @@ jobs:
 
       - name: Check for existing issue
         id: check-issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "🔍 Checking for existing open issues..."
           
@@ -1121,4 +1123,3 @@ jobs:
             
             echo "✅ Created new issue"
           fi
-
