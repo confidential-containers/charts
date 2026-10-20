@@ -24,7 +24,7 @@ permissions:
 jobs:
   check-changes:
     name: Check What Changed
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     outputs:
       kata-deploy-version-changed: ${{ steps.check-appversion.outputs.changed }}
       templates-changed: ${{ steps.check-templates.outputs.changed }}
@@ -129,50 +129,50 @@ jobs:
       fail-fast: false
       matrix:
         environment: [
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: remote                   },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: remote                   },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: k3s,                       image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: k0s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: k0s,                       image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: rke2,                      image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: rke2,                      image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: microk8s,                  image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: microk8s,                  image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-latest, image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-latest, image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: true,  shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: true,  shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: k3s,                       image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: k0s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: k0s,                       image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: rke2,                      image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: rke2,                      image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: microk8s,                  image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: microk8s,                  image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: kubeadm-containerd-latest, image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: kubeadm-containerd-latest, image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: true,  shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: true,  shim: qemu-coco-dev            },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: k0s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: rke2,                      image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: microk8s,                  image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-latest, image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
-          { runner: ubuntu-24.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: true,  shim: qemu-coco-dev-runtime-rs },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: k0s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: rke2,                      image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: microk8s,                  image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: kubeadm-containerd-latest, image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
-          { runner: ubuntu-24.04, deployment-type: standard, k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: true,  shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: remote                   },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: remote                   },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: k3s,                       image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: k0s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: k0s,                       image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: rke2,                      image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: rke2,                      image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: microk8s,                  image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: microk8s,                  image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-latest, image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-latest, image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: true,  shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: true,  shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: k3s,                       image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: k0s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: k0s,                       image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: rke2,                      image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: rke2,                      image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: microk8s,                  image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: microk8s,                  image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: kubeadm-containerd-latest, image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: kubeadm-containerd-latest, image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: false, shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: true,  shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: experimental-force-guest-pull, test-containerd-upgrade: true,  shim: qemu-coco-dev            },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: k0s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: rke2,                      image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: microk8s,                  image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-latest, image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: true,  shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: k3s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: k0s,                       image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: rke2,                      image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: microk8s,                  image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: kubeadm-containerd-latest, image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev-runtime-rs },
+          { runner: ubuntu-26.04, deployment-type: standard, k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: true,  shim: qemu-coco-dev-runtime-rs },
           { runner: s390x-large,  deployment-type: ci,       k8s-distro: kubeadm-containerd-latest, image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
           { runner: s390x-large,  deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: false, shim: qemu-coco-dev            },
           { runner: s390x-large,  deployment-type: ci,       k8s-distro: kubeadm-containerd-1.7,    image-pull-mode: nydus,                         test-containerd-upgrade: true, shim: qemu-coco-dev             },
@@ -968,7 +968,7 @@ jobs:
 
   test-summary:
     name: E2E Test Summary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [e2e-tests]
     if: always()
     steps:
@@ -1021,7 +1021,7 @@ jobs:
 
   create-issue-on-failure:
     name: Create Issue on E2E Failure
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [e2e-tests]
     if: |
       always() &&

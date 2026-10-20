@@ -6,7 +6,7 @@ on:
 jobs:
   release:
     name: Release Helm Chart
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: write  # Required for creating releases and tags
       packages: write  # Required for pushing to GitHub Container Registry
