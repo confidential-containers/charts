@@ -24,6 +24,10 @@ kata-as-coco-runtime:
   shims:
     remote:
       enabled: true
+      supportedArches:
+        - amd64
+        - ppc64le
+        - s390x
     qemu-snp:
       enabled: false
 
