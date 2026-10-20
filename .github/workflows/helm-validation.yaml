@@ -15,7 +15,7 @@ concurrency:
 jobs:
   validate-templates:
     name: Validate Helm Templates
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -115,7 +115,7 @@ jobs:
 
   helm-lint:
     name: Helm Lint
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
