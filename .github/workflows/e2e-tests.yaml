@@ -314,6 +314,20 @@ jobs:
           done
           echo "✅ All nodes labeled"
 
+      - name: Set up BYOM podvm container
+        if: steps.should-run.outputs.should-run == 'true' && matrix.environment.shim == 'remote'
+        id: byom-podvm
+        run: |
+          ssh-keygen -t rsa -b 4096 -f "${RUNNER_TEMP}/byom_id_rsa" -N "" -q
+          docker run -d --name byom-podvm --privileged ghcr.io/confidential-containers/podvm-byom-e2e-image-amd64:latest
+          docker cp "${RUNNER_TEMP}/byom_id_rsa.pub" byom-podvm:/home/peerpod/.ssh/authorized_keys
+          docker exec byom-podvm chmod 600 /home/peerpod/.ssh/authorized_keys
+          docker exec byom-podvm chown peerpod:peerpod /home/peerpod/.ssh/authorized_keys
+          IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' byom-podvm)
+          echo "ip=${IP}" >> $GITHUB_OUTPUT
+          echo "priv-key=${RUNNER_TEMP}/byom_id_rsa" >> $GITHUB_OUTPUT
+          echo "pub-key=${RUNNER_TEMP}/byom_id_rsa.pub" >> $GITHUB_OUTPUT
+
       - name: Determine architecture
         if: steps.should-run.outputs.should-run == 'true'
         run: |
@@ -380,19 +394,12 @@ jobs:
             ARGS="${ARGS} --set kata-as-coco-runtime.snapshotter.setup=null --set kata-as-coco-runtime.shims.${SHIM}.containerd.snapshotter='' --set kata-as-coco-runtime.shims.${SHIM}.containerd.forceGuestPull=true"
           fi
           
-          # Add peerpods provider config (only for remote shim).
-          # Uses docker provider since it runs on standard GH runners.
-          # Provider values files (e.g. providers/docker.yaml) are bundled
-          # inside the peerpods subchart tgz and not directly accessible,
-          # so we pass the config inline via --set.
           if [ "${{ matrix.environment.shim }}" == "remote" ]; then
             ARGS="${ARGS} --set kata-as-coco-runtime.defaultShim.amd64=remote"
-            ARGS="${ARGS} --set peerpods.provider=docker"
-            # Docker provider requires the dev image (includes CGO bindings).
-            ARGS="${ARGS} --set peerpods.image.tag=dev-a5f492482236b9fc4a77088efe6b4c2159ae6a03"
-            ARGS="${ARGS} --set peerpods.providerConfigs.docker.DOCKER_HOST=unix:///var/run/docker.sock"
-            ARGS="${ARGS} --set peerpods.providerConfigs.docker.DOCKER_NETWORK_NAME=bridge"
-            ARGS="${ARGS} --set peerpods.providerConfigs.docker.DOCKER_PODVM_IMAGE=quay.io/confidential-containers/podvm-docker-image"
+            ARGS="${ARGS} --set peerpods.provider=byom"
+            ARGS="${ARGS} --set peerpods.providerConfigs.byom.VM_POOL_IPS=${{ steps.byom-podvm.outputs.ip }}"
+            ARGS="${ARGS} --set-file peerpods.providerSecrets.byom.id_rsa=${{ steps.byom-podvm.outputs.priv-key }}"
+            ARGS="${ARGS} --set-file peerpods.providerSecrets.byom.id_rsa_pub=${{ steps.byom-podvm.outputs.pub-key }}"
           fi
 
           # Add containerd upgrade flags (only for containerd upgrade test)
